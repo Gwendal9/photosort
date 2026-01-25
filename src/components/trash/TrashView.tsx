@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePhotoStore } from '../../stores/photoStore';
-import { emptyTrash as emptyTrashCommand } from '../../services/tauriCommands';
+import { deleteFiles } from '../../services/tauriCommands';
 
 export function TrashView() {
   const { trashItems, restoreFromTrash, emptyTrash } = usePhotoStore();
@@ -27,7 +27,17 @@ export function TrashView() {
 
   const handleEmptyTrash = async () => {
     try {
-      await emptyTrashCommand();
+      // Get all file paths from trash items
+      const filePaths = trashItems.map(item => item.photo.path);
+
+      // Delete files from disk
+      const result = await deleteFiles(filePaths);
+
+      if (result.errors.length > 0) {
+        console.error('Erreurs lors de la suppression:', result.errors);
+      }
+
+      // Clear the trash in the store
       emptyTrash();
       setShowConfirmEmpty(false);
     } catch (error) {

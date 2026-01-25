@@ -200,19 +200,58 @@ pub async fn browse_directory(path: String) -> Result<Vec<Folder>, AppError> {
                 continue;
             }
 
+            // Count photos in this folder (quick scan, max depth 3)
+            let photo_count = count_photos_quick(&entry_path, 3);
+
             folders.push(Folder {
                 path: entry_path.to_string_lossy().to_string(),
                 name,
-                photo_count: None,
+                photo_count: Some(photo_count),
                 is_excluded: false,
             });
         }
     }
 
-    // Sort folders alphabetically
-    folders.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    // Sort folders by photo count (descending), then alphabetically
+    folders.sort_by(|a, b| {
+        let count_a = a.photo_count.unwrap_or(0);
+        let count_b = b.photo_count.unwrap_or(0);
+        if count_a != count_b {
+            count_b.cmp(&count_a) // Descending by photo count
+        } else {
+            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+        }
+    });
 
     Ok(folders)
+}
+
+/// Count photos quickly with limited depth to avoid slow scans
+fn count_photos_quick(path: &Path, max_depth: usize) -> u32 {
+    let mut count = 0;
+
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let entry_path = entry.path();
+
+            if entry_path.is_file() {
+                if let Some(ext) = entry_path.extension().and_then(|e| e.to_str()) {
+                    if SUPPORTED_EXTENSIONS.contains(&ext.to_lowercase().as_str()) {
+                        count += 1;
+                    }
+                }
+            } else if entry_path.is_dir() && max_depth > 0 {
+                // Skip hidden directories
+                if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
+                    if !name.starts_with('.') {
+                        count += count_photos_quick(&entry_path, max_depth - 1);
+                    }
+                }
+            }
+        }
+    }
+
+    count
 }
 
 fn create_photo_from_path(path: &Path) -> Result<Photo, AppError> {

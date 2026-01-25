@@ -44,6 +44,7 @@ pub fn run() {
             trash::restore_from_trash,
             trash::empty_trash,
             trash::get_trash_size,
+            trash::delete_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

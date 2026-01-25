@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { FolderPicker } from './components/folders/FolderPicker';
-import { PhotoGrid } from './components/photos/PhotoGrid';
 import { ComparisonView } from './components/comparison/ComparisonView';
 import { TrashView } from './components/trash/TrashView';
 import { ProgressBar } from './components/common/ProgressBar';
@@ -9,7 +8,7 @@ import { Toast } from './components/common/Toast';
 import { usePhotoStore } from './stores/photoStore';
 import type { AnalysisProgress } from './types';
 
-type View = 'home' | 'photos' | 'comparison' | 'trash';
+type View = 'home' | 'comparison' | 'trash';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -40,12 +39,6 @@ function App() {
                 Accueil
               </button>
               <button
-                onClick={() => setCurrentView('photos')}
-                className={`px-3 py-2 rounded-md ${currentView === 'photos' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
-              >
-                Photos
-              </button>
-              <button
                 onClick={() => setCurrentView('comparison')}
                 className={`px-3 py-2 rounded-md ${currentView === 'comparison' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}
               >
@@ -74,7 +67,6 @@ function App() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {currentView === 'home' && <FolderPicker />}
-        {currentView === 'photos' && <PhotoGrid />}
         {currentView === 'comparison' && <ComparisonView />}
         {currentView === 'trash' && <TrashView />}
       </main>

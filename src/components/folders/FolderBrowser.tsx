@@ -203,20 +203,34 @@ export function FolderBrowser({ isOpen, onClose, onSelect }: FolderBrowserProps)
               <p>Ce dossier ne contient aucun sous-dossier</p>
             </div>
           ) : (
-            // Show folders
+            // Show folders with photo count
             <div className="space-y-1">
-              {folders.map((folder) => (
-                <button
-                  key={folder.path}
-                  onClick={() => navigateTo(folder.path, folder.name)}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
-                >
-                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                  </svg>
-                  <span className="text-gray-700">{folder.name}</span>
-                </button>
-              ))}
+              {folders.map((folder) => {
+                const photoCount = (folder as any).photo_count || 0;
+                const hasPhotos = photoCount > 0;
+
+                return (
+                  <button
+                    key={folder.path}
+                    onClick={() => navigateTo(folder.path, folder.name)}
+                    className={`w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-100 transition-colors text-left ${hasPhotos ? 'bg-blue-50' : ''}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <svg className={`w-5 h-5 ${hasPhotos ? 'text-blue-500' : 'text-yellow-500'}`} fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                      </svg>
+                      <span className={`${hasPhotos ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+                        {folder.name}
+                      </span>
+                    </div>
+                    {hasPhotos && (
+                      <span className="text-sm bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                        {photoCount} photo{photoCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

@@ -12,6 +12,7 @@ interface PhotoCardProps {
 export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const { addToTrash } = usePhotoStore();
 
   // Convert local file path to Tauri asset URL
@@ -35,12 +36,21 @@ export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProp
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Loading placeholder */}
+      {!imageLoaded && !imageError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+        </div>
+      )}
+
       {!imageError ? (
         <img
           src={imageSrc}
           alt={photo.filename}
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover transition-opacity duration-200 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading="lazy"
+          decoding="async"
+          onLoad={() => setImageLoaded(true)}
           onError={() => setImageError(true)}
         />
       ) : (

@@ -45,6 +45,17 @@ export async function emptyTrash(): Promise<{ freedBytes: number }> {
   return invoke('empty_trash');
 }
 
+// Delete files permanently from disk
+export interface DeleteResult {
+  deleted_count: number;
+  freed_bytes: number;
+  errors: string[];
+}
+
+export async function deleteFiles(filePaths: string[]): Promise<DeleteResult> {
+  return invoke('delete_files', { filePaths });
+}
+
 export async function getTrashSize(): Promise<{ count: number; totalBytes: number }> {
   return invoke('get_trash_size');
 }

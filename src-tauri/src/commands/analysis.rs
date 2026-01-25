@@ -67,9 +67,10 @@ pub async fn start_analysis(
     });
 
     // Step 2: Generate hashes for all photos in parallel
+    // Use smaller hash size (8x8) for faster processing
     let hasher = HasherConfig::new()
-        .hash_alg(HashAlg::DoubleGradient)
-        .hash_size(16, 16)
+        .hash_alg(HashAlg::Gradient) // Faster algorithm
+        .hash_size(8, 8) // Smaller hash = faster comparison
         .to_hasher();
 
     let processed = AtomicU32::new(0);
@@ -85,14 +86,18 @@ pub async fn start_analysis(
             let path = Path::new(path_str);
             let photo = create_photo_from_path(path).ok()?;
 
-            // Try to generate hash
+            // Try to generate hash - resize image first for speed
             let hash = image::open(path)
                 .ok()
-                .map(|img| hasher.hash_image(&img).as_bytes().to_vec());
+                .map(|img| {
+                    // Resize to small size before hashing for speed
+                    let small = img.thumbnail(200, 200);
+                    hasher.hash_image(&small).as_bytes().to_vec()
+                });
 
-            // Update progress
+            // Update progress every 5 photos or at the end
             let current = processed.fetch_add(1, Ordering::SeqCst) + 1;
-            if current % 10 == 0 || current == total {
+            if current % 5 == 0 || current == total {
                 let _ = app_clone.emit("analysis-progress", AnalysisProgress {
                     current,
                     total,
