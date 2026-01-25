@@ -1,26 +1,25 @@
 import { useState } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
-import { selectFolder, startAnalysis } from '../../services/tauriCommands';
+import { startAnalysis } from '../../services/tauriCommands';
+import { FolderBrowser } from './FolderBrowser';
 import type { Folder } from '../../types';
 
 export function FolderPicker() {
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
   const { setSelectedFolders, startAnalysis: beginAnalysis, setSimilarityGroups, setAnalysisProgress } = usePhotoStore();
 
-  const handleAddFolder = async () => {
-    try {
-      const path = await selectFolder();
-      if (path) {
-        const newFolder: Folder = {
-          path,
-          name: path.split(/[/\\]/).pop() || path,
-          isExcluded: false,
-        };
-        setFolders((prev) => [...prev, newFolder]);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la sélection du dossier:', error);
+  const handleAddFolder = (path: string) => {
+    // Check if folder is already added
+    if (folders.some(f => f.path === path)) {
+      return;
     }
+    const newFolder: Folder = {
+      path,
+      name: path.split(/[/\\]/).pop() || path,
+      isExcluded: false,
+    };
+    setFolders((prev) => [...prev, newFolder]);
   };
 
   const handleRemoveFolder = (path: string) => {
@@ -56,7 +55,7 @@ export function FolderPicker() {
         </p>
 
         <button
-          onClick={handleAddFolder}
+          onClick={() => setIsBrowserOpen(true)}
           className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,6 +64,12 @@ export function FolderPicker() {
           Ajouter un dossier
         </button>
       </div>
+
+      <FolderBrowser
+        isOpen={isBrowserOpen}
+        onClose={() => setIsBrowserOpen(false)}
+        onSelect={handleAddFolder}
+      />
 
       {folders.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
@@ -95,7 +100,7 @@ export function FolderPicker() {
 
           <div className="flex justify-end gap-4">
             <button
-              onClick={handleAddFolder}
+              onClick={() => setIsBrowserOpen(true)}
               className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             >
               Ajouter un autre dossier

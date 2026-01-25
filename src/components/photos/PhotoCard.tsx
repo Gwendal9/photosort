@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import type { Photo } from '../../types';
 import { usePhotoStore } from '../../stores/photoStore';
 
@@ -10,7 +11,13 @@ interface PhotoCardProps {
 
 export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const { addToTrash } = usePhotoStore();
+
+  // Convert local file path to Tauri asset URL
+  const imageSrc = useMemo(() => {
+    return convertFileSrc(photo.path);
+  }, [photo.path]);
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} o`;
@@ -28,12 +35,13 @@ export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProp
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {photo.thumbnailPath ? (
+      {!imageError ? (
         <img
-          src={photo.thumbnailPath}
+          src={imageSrc}
           alt={photo.filename}
           className="w-full h-full object-cover"
           loading="lazy"
+          onError={() => setImageError(true)}
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-gray-200">

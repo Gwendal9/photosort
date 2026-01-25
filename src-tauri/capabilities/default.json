@@ -6,6 +6,22 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "fs:default",
+    "fs:read-all",
+    "fs:write-all",
+    "dialog:default",
+    "shell:default",
+    "log:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "**" },
+        { "path": "$HOME/**" },
+        { "path": "/mnt/**" },
+        { "path": "/media/**" },
+        { "path": "/" }
+      ]
+    }
   ]
 }

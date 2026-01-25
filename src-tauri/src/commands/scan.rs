@@ -1,5 +1,6 @@
 use super::{AppError, Folder, Photo};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use tauri_plugin_dialog::DialogExt;
@@ -7,6 +8,13 @@ use uuid::Uuid;
 use walkdir::WalkDir;
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "heic", "heif", "webp", "cr2", "nef", "arw", "dng"];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DriveInfo {
+    pub path: String,
+    pub name: String,
+    pub drive_type: String, // "local", "wsl", "network"
+}
 
 #[tauri::command]
 pub async fn scan_folder(path: String) -> Result<Vec<Photo>, AppError> {
@@ -84,6 +92,127 @@ pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, AppE
         Ok(path) => Ok(path),
         Err(_) => Ok(None),
     }
+}
+
+#[tauri::command]
+pub async fn list_drives() -> Result<Vec<DriveInfo>, AppError> {
+    let mut drives = Vec::new();
+
+    // Add home directory
+    if let Some(home) = dirs::home_dir() {
+        drives.push(DriveInfo {
+            path: home.to_string_lossy().to_string(),
+            name: "Dossier personnel".to_string(),
+            drive_type: "local".to_string(),
+        });
+    }
+
+    // Add root
+    drives.push(DriveInfo {
+        path: "/".to_string(),
+        name: "Racine (/)".to_string(),
+        drive_type: "local".to_string(),
+    });
+
+    // Check for WSL Windows drives under /mnt
+    if let Ok(entries) = fs::read_dir("/mnt") {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            let name = path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string();
+
+            // Check if it looks like a Windows drive letter (single letter)
+            if name.len() == 1 && name.chars().next().map(|c| c.is_ascii_alphabetic()).unwrap_or(false) {
+                // Verify it's accessible
+                if path.is_dir() && fs::read_dir(&path).is_ok() {
+                    drives.push(DriveInfo {
+                        path: path.to_string_lossy().to_string(),
+                        name: format!("Disque Windows ({}:)", name.to_uppercase()),
+                        drive_type: "wsl".to_string(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Check for other common mount points
+    for mount_point in &["/media", "/run/media"] {
+        if let Ok(entries) = fs::read_dir(mount_point) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.is_dir() {
+                    // For /run/media, there's usually a username subfolder
+                    if *mount_point == "/run/media" {
+                        if let Ok(sub_entries) = fs::read_dir(&path) {
+                            for sub_entry in sub_entries.filter_map(|e| e.ok()) {
+                                let sub_path = sub_entry.path();
+                                if sub_path.is_dir() {
+                                    let name = sub_path.file_name()
+                                        .and_then(|n| n.to_str())
+                                        .unwrap_or("Disque externe")
+                                        .to_string();
+                                    drives.push(DriveInfo {
+                                        path: sub_path.to_string_lossy().to_string(),
+                                        name: format!("Disque externe ({})", name),
+                                        drive_type: "local".to_string(),
+                                    });
+                                }
+                            }
+                        }
+                    } else {
+                        let name = path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("Disque externe")
+                            .to_string();
+                        drives.push(DriveInfo {
+                            path: path.to_string_lossy().to_string(),
+                            name: format!("Disque externe ({})", name),
+                            drive_type: "local".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(drives)
+}
+
+#[tauri::command]
+pub async fn browse_directory(path: String) -> Result<Vec<Folder>, AppError> {
+    let mut folders = Vec::new();
+
+    let entries = fs::read_dir(&path)?;
+
+    for entry in entries.filter_map(|e| e.ok()) {
+        let entry_path = entry.path();
+        if entry_path.is_dir() {
+            let name = entry_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Inconnu")
+                .to_string();
+
+            // Skip hidden folders (starting with .)
+            if name.starts_with('.') {
+                continue;
+            }
+
+            folders.push(Folder {
+                path: entry_path.to_string_lossy().to_string(),
+                name,
+                photo_count: None,
+                is_excluded: false,
+            });
+        }
+    }
+
+    // Sort folders alphabetically
+    folders.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+    Ok(folders)
 }
 
 fn create_photo_from_path(path: &Path) -> Result<Photo, AppError> {

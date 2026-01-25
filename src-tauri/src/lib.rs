@@ -30,6 +30,8 @@ pub fn run() {
             scan::scan_folder,
             scan::list_subfolders,
             scan::select_folder,
+            scan::list_drives,
+            scan::browse_directory,
             // Photo commands
             photos::get_photo_thumbnail,
             photos::get_photo_metadata,

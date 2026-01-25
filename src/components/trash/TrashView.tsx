@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { usePhotoStore } from '../../stores/photoStore';
 import { emptyTrash as emptyTrashCommand } from '../../services/tauriCommands';
 
@@ -102,19 +103,12 @@ export function TrashView() {
         {trashItems.map((item) => (
           <div key={item.id} className="bg-white rounded-lg shadow overflow-hidden">
             <div className="aspect-video bg-gray-100 relative">
-              {item.photo.thumbnailPath ? (
-                <img
-                  src={item.photo.thumbnailPath}
-                  alt={item.photo.filename}
-                  className="w-full h-full object-cover opacity-75"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              )}
+              <img
+                src={convertFileSrc(item.photo.path)}
+                alt={item.photo.filename}
+                className="w-full h-full object-cover opacity-75"
+                onError={(e) => (e.currentTarget.style.display = 'none')}
+              />
             </div>
             <div className="p-4">
               <p className="font-medium text-gray-900 truncate">{item.photo.filename}</p>

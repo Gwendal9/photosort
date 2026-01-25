@@ -58,3 +58,20 @@ export async function setSimilarityThreshold(threshold: number): Promise<void> {
 export async function selectFolder(): Promise<string | null> {
   return invoke('select_folder');
 }
+
+// Drive info type
+export interface DriveInfo {
+  path: string;
+  name: string;
+  drive_type: 'local' | 'wsl' | 'network';
+}
+
+// List available drives (including WSL mounts)
+export async function listDrives(): Promise<DriveInfo[]> {
+  return invoke('list_drives');
+}
+
+// Browse a directory
+export async function browseDirectory(path: string): Promise<{ path: string; name: string }[]> {
+  return invoke('browse_directory', { path });
+}

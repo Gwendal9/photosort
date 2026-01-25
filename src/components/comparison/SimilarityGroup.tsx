@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import type { SimilarityGroup } from '../../types';
 import { usePhotoStore } from '../../stores/photoStore';
 import { PhotoCard } from '../photos/PhotoCard';
@@ -45,9 +46,12 @@ export function SimilarityGroupCard({ group, isExpanded, onToggle }: SimilarityG
                 className="w-10 h-10 rounded-lg border-2 border-white bg-gray-200 overflow-hidden"
                 style={{ zIndex: 3 - i }}
               >
-                {photo.thumbnailPath && (
-                  <img src={photo.thumbnailPath} alt="" className="w-full h-full object-cover" />
-                )}
+                <img
+                  src={convertFileSrc(photo.path)}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
               </div>
             ))}
           </div>
