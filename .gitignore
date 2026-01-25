@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+target/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build
+dist/
+*.exe
+*.app
+*.dmg
+*.deb
+*.AppImage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Env
+.env
+.env.local
+
+# Tauri
+src-tauri/target/
+
+# Python ML models (too large)
+*.pt
+*.pth
+*.bin
+
+# OS
+.DS_Store
+Thumbs.db
