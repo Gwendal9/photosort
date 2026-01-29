@@ -12,17 +12,17 @@ export function ProgressBar({ current, total, label, showPercentage = true }: Pr
     <div className="w-full">
       {label && (
         <div className="flex justify-between mb-1">
-          <span className="text-sm text-gray-700">{label}</span>
-          {showPercentage && (
-            <span className="text-sm text-gray-500">
+          <span className="text-sm text-white/80">{label}</span>
+          {showPercentage && total > 0 && (
+            <span className="text-sm text-white/50">
               {current} / {total} ({percentage}%)
             </span>
           )}
         </div>
       )}
-      <div className="w-full bg-gray-200 rounded-full h-2.5">
+      <div className="w-full bg-white/10 rounded-full h-2.5">
         <div
-          className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+          className="bg-white/60 h-2.5 rounded-full transition-all duration-300"
           style={{ width: `${percentage}%` }}
         />
       </div>

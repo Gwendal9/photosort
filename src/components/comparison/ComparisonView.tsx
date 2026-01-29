@@ -9,11 +9,11 @@ export function ComparisonView() {
   if (similarityGroups.length === 0) {
     return (
       <div className="text-center py-12">
-        <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-16 h-16 text-white/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun groupe détecté</h3>
-        <p className="text-gray-500">
+        <h3 className="text-lg font-medium text-white mb-2">Aucun groupe détecté</h3>
+        <p className="text-white/50">
           Lancez une analyse pour détecter les photos similaires.
         </p>
       </div>
@@ -35,25 +35,25 @@ export function ComparisonView() {
   return (
     <div className="space-y-6">
       {/* Summary header */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="glass-card p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-3xl font-bold text-blue-600">{similarityGroups.length}</p>
-            <p className="text-gray-500">Groupes détectés</p>
+            <p className="text-3xl font-bold text-blue-300">{similarityGroups.length}</p>
+            <p className="text-white/50">Groupes détectés</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-orange-600">{totalDuplicates}</p>
-            <p className="text-gray-500">Photos similaires</p>
+            <p className="text-3xl font-bold text-orange-300">{totalDuplicates}</p>
+            <p className="text-white/50">Photos similaires</p>
           </div>
           <div>
-            <p className="text-3xl font-bold text-green-600">{formatSize(potentialSpaceSaved)}</p>
-            <p className="text-gray-500">Espace récupérable</p>
+            <p className="text-3xl font-bold text-green-300">{formatSize(potentialSpaceSaved)}</p>
+            <p className="text-white/50">Espace récupérable</p>
           </div>
         </div>
 
         {/* Similarity threshold slider */}
-        <div className="mt-6 pt-6 border-t">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="mt-6 pt-6 border-t border-white/10">
+          <label className="block text-sm font-medium text-white/70 mb-2">
             Seuil de similarité : {Math.round(similarityThreshold * 100)}%
           </label>
           <input
@@ -62,9 +62,9 @@ export function ComparisonView() {
             max="99"
             value={similarityThreshold * 100}
             onChange={(e) => setSimilarityThreshold(Number(e.target.value) / 100)}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
           />
-          <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <div className="flex justify-between text-xs text-white/40 mt-1">
             <span>Plus permissif</span>
             <span>Plus strict</span>
           </div>

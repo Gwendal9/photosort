@@ -14,9 +14,9 @@ export function Toast({ message, type = 'success', onClose, duration = 3000 }: T
   }, [onClose, duration]);
 
   const bgColor = {
-    success: 'bg-green-600',
-    error: 'bg-red-600',
-    info: 'bg-blue-600',
+    success: 'bg-green-500/30 border-green-400/30',
+    error: 'bg-red-500/30 border-red-400/30',
+    info: 'bg-blue-500/30 border-blue-400/30',
   }[type];
 
   const icon = {
@@ -38,7 +38,7 @@ export function Toast({ message, type = 'success', onClose, duration = 3000 }: T
   }[type];
 
   return (
-    <div className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up`}>
+    <div className={`${bgColor} backdrop-blur border text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up`}>
       {icon}
       <span>{message}</span>
       <button onClick={onClose} className="ml-2 hover:opacity-80">

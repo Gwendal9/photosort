@@ -2,15 +2,14 @@
 
 export interface Photo {
   id: string;
-  path: string;
+  path: string; // relative path (display only)
   filename: string;
   size: number;
   width: number;
   height: number;
   createdAt: string;
   modifiedAt: string;
-  thumbnailPath?: string;
-  embedding?: number[];
+  blobUrl?: string;
 }
 
 export interface SimilarityGroup {
@@ -29,12 +28,11 @@ export interface TrashItem {
 export interface AnalysisProgress {
   current: number;
   total: number;
-  status: 'idle' | 'scanning' | 'analyzing' | 'grouping' | 'complete';
-  estimatedTimeRemaining?: number;
+  status: 'idle' | 'scanning' | 'hashing' | 'comparing' | 'complete';
 }
 
 export interface AppError {
-  code: 'FILE_NOT_FOUND' | 'PERMISSION_DENIED' | 'ANALYSIS_FAILED' | 'DB_ERROR' | 'SIDECAR_ERROR';
+  code: 'FILE_NOT_FOUND' | 'PERMISSION_DENIED' | 'ANALYSIS_FAILED' | 'BROWSER_UNSUPPORTED';
   message: string;
   userMessage: string;
 }
@@ -44,4 +42,5 @@ export interface Folder {
   name: string;
   photoCount?: number;
   isExcluded: boolean;
+  dirHandle?: FileSystemDirectoryHandle;
 }

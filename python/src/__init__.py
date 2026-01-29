@@ -1,1 +1,0 @@
-# PhotoSort Python Sidecar

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Photo, SimilarityGroup, TrashItem, AnalysisProgress, AppError, Folder } from '../types';
+import { revokeAllBlobUrls } from '../services/fileSystemService';
 
 interface ToastMessage {
   id: string;
@@ -34,6 +35,7 @@ interface PhotoStore {
   stopAnalysis: () => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
+  revokeAllBlobUrls: () => void;
 }
 
 export const usePhotoStore = create<PhotoStore>((set, get) => ({
@@ -56,13 +58,11 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
 
   addToTrash: (photo) =>
     set((state) => {
-      // Check if photo is already in trash (by path to avoid duplicates)
       const alreadyInTrash = state.trashItems.some(
         (item) => item.photo.path === photo.path
       );
 
       if (alreadyInTrash) {
-        // Show toast that photo is already in trash
         const toastId = crypto.randomUUID();
         setTimeout(() => get().removeToast(toastId), 3000);
         return {
@@ -74,15 +74,13 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
         };
       }
 
-      // Add to trash and show success toast
       const toastId = crypto.randomUUID();
       setTimeout(() => get().removeToast(toastId), 3000);
 
-      // Remove from similarity groups
       const updatedGroups = state.similarityGroups.map(group => ({
         ...group,
         photos: group.photos.filter(p => p.id !== photo.id),
-      })).filter(group => group.photos.length >= 2); // Keep only groups with 2+ photos
+      })).filter(group => group.photos.length >= 2);
 
       return {
         trashItems: [
@@ -176,4 +174,8 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
+
+  revokeAllBlobUrls: () => {
+    revokeAllBlobUrls();
+  },
 }));
