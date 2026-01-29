@@ -1,97 +1,104 @@
 # PhotoSort
 
-Application desktop de tri intelligent de photos. Détecte automatiquement les photos similaires et doublons pour libérer de l'espace sur votre disque.
+Application web de tri intelligent de photos. Détecte automatiquement les photos similaires et doublons pour libérer de l'espace sur votre disque.
+
+**100% local** — vos photos ne quittent jamais votre navigateur, aucun serveur n'est impliqué.
 
 ## Fonctionnalités
 
-- **Sélecteur de dossiers en français** avec support WSL (accès aux disques Windows depuis Linux)
-- **Détection de photos similaires** par hashing perceptuel (pas besoin d'internet)
-- **Interface intuitive** pour comparer et nettoyer vos photos
+- **Détection de photos similaires** par hashing perceptuel (gradient hash 64 bits)
+- **Seuil de similarité ajustable** (50% à 99%) pour affiner les résultats
+- **Interface intuitive** pour comparer et nettoyer vos photos par groupes
 - **Corbeille interne** avant suppression définitive
-- **100% local** - vos photos ne quittent jamais votre ordinateur
+- **Traitement parallèle** via Web Workers pour des performances optimales
+- **Support multi-formats** : JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, HEIF, formats RAW
 
 ## Stack technique
 
 - **Frontend** : React 19 + TypeScript + Tailwind CSS 4 + Zustand
-- **Backend** : Tauri 2 (Rust)
-- **Analyse d'images** : image_hasher (hashing perceptuel)
-- **Base de données** : SQLite (rusqlite)
+- **Build** : Vite 7
+- **APIs Web** : File System Access API, Web Workers, OffscreenCanvas
+- **Déploiement** : Vercel
+
+## Compatibilité navigateur
+
+| Navigateur | Support |
+|---|---|
+| Chrome 86+ | Complet |
+| Edge 86+ | Complet |
+| Firefox | Non supporté (pas de File System Access API) |
+| Safari | Non supporté (pas de File System Access API) |
 
 ## Installation
 
 ### Prérequis
 
-**Node.js 18+** : [nodejs.org](https://nodejs.org/)
+- **Node.js 18+** : [nodejs.org](https://nodejs.org/)
+- **Chrome ou Edge** (requis pour l'accès aux fichiers)
 
-**Rust 1.77+** :
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-**Dépendances système** (Linux uniquement) :
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev \
-  libappindicator3-dev librsvg2-dev patchelf pkg-config libssl-dev \
-  libglib2.0-dev libcairo2-dev libpango1.0-dev libatk1.0-dev \
-  libgdk-pixbuf-2.0-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
-
-# Fedora
-sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget \
-  libappindicator-gtk3-devel librsvg2-devel
-sudo dnf group install "C Development Tools and Libraries"
-
-# Arch Linux
-sudo pacman -S webkit2gtk-4.1 base-devel curl wget openssl \
-  appmenu-gtk-module libappindicator-gtk3 librsvg
-```
-
-### Lancer l'application
+### Lancer en local
 
 ```bash
 # Cloner le repo
-git clone https://github.com/VOTRE_USERNAME/photosort.git
+git clone https://github.com/Gwendal9/photosort.git
 cd photosort
 
 # Installer les dépendances
 npm install
 
 # Lancer en mode développement
-npm run tauri:dev
+npm run dev
 ```
 
-### Build (créer un exécutable)
+Le serveur de développement démarre sur `http://localhost:5173`.
+
+### Build de production
 
 ```bash
-npm run tauri:build
+npm run build
 ```
 
-L'exécutable sera dans `src-tauri/target/release/`.
+Les fichiers sont générés dans `./dist`.
+
+## Déploiement
+
+L'application est configurée pour Vercel :
+
+1. Connecter le repo GitHub à Vercel
+2. Vercel exécute automatiquement `npm run build` et déploie le dossier `dist/`
+3. Le fichier `vercel.json` gère le routing SPA
 
 ## Utilisation
 
-1. Cliquez sur **"Ajouter un dossier"** pour ouvrir le sélecteur
-2. Naviguez vers vos photos (les disques Windows sont dans `/mnt/c`, `/mnt/d`, etc.)
+1. Ouvrez l'application dans **Chrome** ou **Edge**
+2. Cliquez sur **"Ajouter un dossier"** et sélectionnez un dossier de photos
 3. Cliquez sur **"Lancer l'analyse"**
 4. Dans l'onglet **Comparaison**, visualisez les groupes de photos similaires
-5. Sélectionnez la photo à garder et supprimez les doublons
+5. Ajustez le seuil de similarité si nécessaire
+6. Sélectionnez les photos à supprimer — elles vont dans la corbeille
+7. Videz la corbeille quand vous êtes prêt
 
 ## Structure du projet
 
 ```
 photosort/
-├── src/                    # Frontend React
-│   ├── components/         # Composants UI
-│   ├── stores/             # État global (Zustand)
-│   ├── services/           # API Tauri
-│   └── types/              # Types TypeScript
-├── src-tauri/              # Backend Rust
-│   ├── src/
-│   │   ├── commands/       # Commandes exposées au frontend
-│   │   ├── db/             # Base de données
-│   │   └── lib.rs
-│   └── Cargo.toml
+├── src/
+│   ├── components/
+│   │   ├── folders/          # Sélection de dossiers
+│   │   ├── comparison/       # Comparaison des similaires
+│   │   ├── photos/           # Grille et cartes photo
+│   │   ├── trash/            # Corbeille
+│   │   └── common/           # Barre de progression, toasts
+│   ├── stores/               # État global (Zustand)
+│   ├── services/             # File System API, analyse d'images
+│   ├── workers/              # Web Worker de hashing
+│   ├── hooks/                # Hooks React
+│   ├── types/                # Types TypeScript
+│   ├── App.tsx
+│   └── main.tsx
+├── index.html
+├── vite.config.ts
+├── vercel.json
 └── package.json
 ```
 
