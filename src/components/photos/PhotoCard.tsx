@@ -69,6 +69,19 @@ export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProp
         </div>
       )}
 
+      {/* Type badge */}
+      {photo.photoType && photo.photoType !== 'photo' && (
+        <div
+          className={`absolute top-1 right-1 z-10 px-1.5 py-0.5 rounded text-xs font-semibold backdrop-blur ${
+            photo.photoType === 'screenshot'
+              ? 'bg-purple-500/80 text-white'
+              : 'bg-cyan-500/80 text-white'
+          }`}
+        >
+          {photo.photoType === 'screenshot' ? 'Capture' : 'Doc'}
+        </div>
+      )}
+
       {/* Overlay on hover */}
       {isHovered && (
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-between p-2 transition-opacity">

@@ -95,11 +95,11 @@ export function FolderPicker() {
 
       if (abort.signal.aborted) return;
 
-      // Merge quality scores into photos
+      // Merge quality scores + classification into photos
       const photosWithQuality = photos.map((p) => {
         const q = qualityMap.get(p.id);
         return q
-          ? { ...p, qualityScore: q.qualityScore, blurScore: q.blurScore, exposureScore: q.exposureScore }
+          ? { ...p, qualityScore: q.qualityScore, blurScore: q.blurScore, exposureScore: q.exposureScore, photoType: q.photoType }
           : p;
       });
 

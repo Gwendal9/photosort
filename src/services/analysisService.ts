@@ -1,6 +1,6 @@
 // Analysis service: orchestrates hashing + quality + comparison using Web Workers
 
-import type { Photo, SimilarityGroup, AnalysisProgress } from '../types';
+import type { Photo, PhotoType, SimilarityGroup, AnalysisProgress } from '../types';
 import { getFileArrayBuffer } from './fileSystemService';
 // @ts-ignore — Vite worker URL import
 import HashWorkerURL from '../workers/hashWorker.ts?worker&url';
@@ -13,6 +13,7 @@ interface HashResult {
   qualityScore: number;
   blurScore: number;
   exposureScore: number;
+  photoType: PhotoType;
 }
 
 const HASH_BITS = 256; // 16x16 hash
@@ -36,7 +37,7 @@ function similarity(a: Uint8Array, b: Uint8Array): number {
 
 export interface AnalysisResult {
   groups: SimilarityGroup[];
-  qualityMap: Map<string, { qualityScore: number; blurScore: number; exposureScore: number }>;
+  qualityMap: Map<string, { qualityScore: number; blurScore: number; exposureScore: number; photoType: PhotoType }>;
 }
 
 export async function analyzePhotos(
@@ -56,12 +57,13 @@ export async function analyzePhotos(
   if (signal?.aborted) return { groups: [], qualityMap: new Map() };
 
   // Extract quality map
-  const qualityMap = new Map<string, { qualityScore: number; blurScore: number; exposureScore: number }>();
+  const qualityMap = new Map<string, { qualityScore: number; blurScore: number; exposureScore: number; photoType: PhotoType }>();
   for (const h of hashes) {
     qualityMap.set(h.id, {
       qualityScore: h.qualityScore,
       blurScore: h.blurScore,
       exposureScore: h.exposureScore,
+      photoType: h.photoType,
     });
   }
 
@@ -134,6 +136,7 @@ async function hashPhotos(
             qualityScore: data.qualityScore,
             blurScore: data.blurScore,
             exposureScore: data.exposureScore,
+            photoType: data.photoType || 'photo',
           });
         } else if (data.type === 'error') {
           console.warn(`Hash error for ${data.id}: ${data.message}`);

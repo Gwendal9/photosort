@@ -9,6 +9,7 @@ interface ToastMessage {
 }
 
 type QualityFilter = 'all' | 'poor' | 'average' | 'good';
+type TypeFilter = 'all' | 'photo' | 'screenshot' | 'document';
 
 interface PhotoStore {
   // State
@@ -22,6 +23,7 @@ interface PhotoStore {
   error: AppError | null;
   similarityThreshold: number;
   qualityFilter: QualityFilter;
+  typeFilter: TypeFilter;
   toasts: ToastMessage[];
 
   // Actions
@@ -35,6 +37,7 @@ interface PhotoStore {
   setError: (error: AppError | null) => void;
   setSimilarityThreshold: (threshold: number) => void;
   setQualityFilter: (filter: QualityFilter) => void;
+  setTypeFilter: (filter: TypeFilter) => void;
   startAnalysis: () => void;
   stopAnalysis: () => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -54,6 +57,7 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
   error: null,
   similarityThreshold: 0.85,
   qualityFilter: 'all',
+  typeFilter: 'all',
   toasts: [],
 
   // Actions
@@ -154,6 +158,8 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
   setSimilarityThreshold: (threshold) => set({ similarityThreshold: threshold }),
 
   setQualityFilter: (filter) => set({ qualityFilter: filter }),
+
+  setTypeFilter: (filter) => set({ typeFilter: filter }),
 
   startAnalysis: () =>
     set({
