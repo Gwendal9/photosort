@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
-import { pickDirectory, scanDirectory, isFileSystemAccessSupported } from '../../services/fileSystemService';
+import { pickDirectory, scanDirectory, isFileSystemAccessSupported, countPhotosInDirectory, IMAGE_EXTENSIONS } from '../../services/fileSystemService';
 import { analyzePhotos } from '../../services/analysisService';
 import type { Folder, Photo } from '../../types';
 
@@ -16,6 +16,7 @@ export function FolderPicker() {
     setAnalysisProgress,
     setPhotos,
     similarityThreshold,
+    setSimilarityThreshold,
     showToast,
     isAnalyzing,
   } = usePhotoStore();
@@ -42,6 +43,13 @@ export function FolderPicker() {
     };
 
     setFolders((prev) => [...prev, newFolder]);
+
+    // Pre-scan: count photos without reading file contents
+    countPhotosInDirectory(dirHandle).then((count) => {
+      setFolders((prev) =>
+        prev.map((f) => (f.name === dirHandle.name ? { ...f, photoCount: count } : f)),
+      );
+    });
   };
 
   const handleRemoveFolder = (name: string) => {
@@ -133,6 +141,17 @@ export function FolderPicker() {
           </svg>
           Ajouter un dossier
         </button>
+
+        <div className="mt-6 text-sm text-white/50">
+          <p className="mb-2">Formats pris en charge :</p>
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {[...IMAGE_EXTENSIONS].map((ext) => (
+              <span key={ext} className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/70 uppercase">
+                .{ext}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       {folders.length > 0 && (
@@ -166,6 +185,30 @@ export function FolderPicker() {
               </li>
             ))}
           </ul>
+
+          {folders.some((f) => f.photoCount !== undefined) && (
+            <div className="mb-4 text-sm text-white/60 text-right">
+              Total : {folders.reduce((sum, f) => sum + (f.photoCount ?? 0), 0)} photos détectées
+            </div>
+          )}
+
+          <div className="mb-6 pt-4 border-t border-white/10">
+            <label className="block text-sm font-medium text-white/70 mb-2">
+              Seuil de similarité : {Math.round(similarityThreshold * 100)}%
+            </label>
+            <input
+              type="range"
+              min="50"
+              max="99"
+              value={similarityThreshold * 100}
+              onChange={(e) => setSimilarityThreshold(Number(e.target.value) / 100)}
+              className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+            />
+            <div className="flex justify-between text-xs text-white/40 mt-1">
+              <span>50% — Plus de résultats</span>
+              <span>99% — Plus précis</span>
+            </div>
+          </div>
 
           <div className="flex justify-end gap-4">
             <button

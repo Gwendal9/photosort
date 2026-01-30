@@ -3,10 +3,30 @@
 
 import type { Photo } from '../types';
 
-const IMAGE_EXTENSIONS = new Set([
+export const IMAGE_EXTENSIONS = new Set([
   'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif',
   'heic', 'heif', 'cr2', 'nef', 'arw', 'dng',
 ]);
+
+export async function countPhotosInDirectory(
+  dirHandle: FileSystemDirectoryHandle,
+): Promise<number> {
+  let count = 0;
+
+  async function walk(handle: FileSystemDirectoryHandle) {
+    for await (const entry of handle.values()) {
+      if (entry.kind === 'directory') {
+        await walk(entry);
+      } else if (entry.kind === 'file') {
+        const ext = entry.name.split('.').pop()?.toLowerCase() ?? '';
+        if (IMAGE_EXTENSIONS.has(ext)) count++;
+      }
+    }
+  }
+
+  await walk(dirHandle);
+  return count;
+}
 
 interface FileEntry {
   fileHandle: FileSystemFileHandle;
