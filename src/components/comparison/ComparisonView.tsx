@@ -6,6 +6,8 @@ export function ComparisonView() {
   const { similarityGroups, similarityThreshold, setSimilarityThreshold } = usePhotoStore();
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
+  const filteredGroups = similarityGroups.filter((g) => g.similarity >= similarityThreshold);
+
   if (similarityGroups.length === 0) {
     return (
       <div className="text-center py-12">
@@ -20,8 +22,8 @@ export function ComparisonView() {
     );
   }
 
-  const totalDuplicates = similarityGroups.reduce((acc, g) => acc + g.photos.length - 1, 0);
-  const potentialSpaceSaved = similarityGroups.reduce(
+  const totalDuplicates = filteredGroups.reduce((acc, g) => acc + g.photos.length - 1, 0);
+  const potentialSpaceSaved = filteredGroups.reduce(
     (acc, g) => acc + g.photos.slice(1).reduce((sum, p) => sum + p.size, 0),
     0
   );
@@ -38,7 +40,7 @@ export function ComparisonView() {
       <div className="glass-card p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-3xl font-bold text-blue-300">{similarityGroups.length}</p>
+            <p className="text-3xl font-bold text-blue-300">{filteredGroups.length}</p>
             <p className="text-white/50">Groupes détectés</p>
           </div>
           <div>
@@ -72,16 +74,23 @@ export function ComparisonView() {
       </div>
 
       {/* Groups list */}
-      <div className="space-y-4">
-        {similarityGroups.map((group) => (
-          <SimilarityGroupCard
-            key={group.id}
-            group={group}
-            isExpanded={expandedGroup === group.id}
-            onToggle={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
-          />
-        ))}
-      </div>
+      {filteredGroups.length === 0 ? (
+        <div className="text-center py-8 text-white/50">
+          <p>Aucun groupe ne correspond au seuil de {Math.round(similarityThreshold * 100)}%.</p>
+          <p className="text-sm mt-1">Baissez le seuil pour voir plus de résultats.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredGroups.map((group) => (
+            <SimilarityGroupCard
+              key={group.id}
+              group={group}
+              isExpanded={expandedGroup === group.id}
+              onToggle={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
