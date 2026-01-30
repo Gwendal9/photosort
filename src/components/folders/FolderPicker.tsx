@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
 import { pickDirectory, scanDirectory, isFileSystemAccessSupported, countPhotosInDirectory, IMAGE_EXTENSIONS } from '../../services/fileSystemService';
 import { analyzePhotos } from '../../services/analysisService';
+import { analyzeQuality } from '../../services/qualityService';
 import type { Folder, Photo } from '../../types';
 
 export function FolderPicker() {
@@ -79,16 +80,29 @@ export function FolderPicker() {
         photos.push(...folderPhotos);
       }
 
-      setPhotos(photos);
-      setAllPhotos(photos);
-
       if (photos.length === 0) {
         showToast('Aucune photo trouvée dans les dossiers sélectionnés', 'info');
         stopAnalysis();
         return;
       }
 
-      // Phase 2+3: Hash & Compare
+      // Phase 2: Quality analysis
+      const qualityResults = await analyzeQuality(photos, setAnalysisProgress, abort.signal);
+
+      if (abort.signal.aborted) return;
+
+      // Merge quality scores into photos
+      const photosWithQuality = photos.map((p) => {
+        const q = qualityResults.get(p.id);
+        return q
+          ? { ...p, qualityScore: q.qualityScore, blurScore: q.blurScore, exposureScore: q.exposureScore }
+          : p;
+      });
+
+      setPhotos(photosWithQuality);
+      setAllPhotos(photosWithQuality);
+
+      // Phase 3+4: Hash & Compare
       const groups = await analyzePhotos(
         photos,
         similarityThreshold,

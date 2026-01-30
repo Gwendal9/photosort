@@ -24,7 +24,19 @@ function ThumbnailPreview({ photoId }: { photoId: string }) {
 
 export function SimilarityGroupCard({ group, isExpanded, onToggle }: SimilarityGroupCardProps) {
   const { addToTrash } = usePhotoStore();
-  const [keepPhoto, setKeepPhoto] = useState<string>(group.photos[0]?.id || '');
+
+  // Auto-select the photo with the best quality score (fallback to first)
+  const bestPhotoId = (() => {
+    let best = group.photos[0];
+    for (const p of group.photos) {
+      if ((p.qualityScore ?? -1) > (best.qualityScore ?? -1)) {
+        best = p;
+      }
+    }
+    return best?.id || '';
+  })();
+
+  const [keepPhoto, setKeepPhoto] = useState<string>(bestPhotoId);
 
   const handleKeepOnly = () => {
     group.photos

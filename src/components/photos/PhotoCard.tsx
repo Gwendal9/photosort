@@ -53,6 +53,22 @@ export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProp
         </div>
       ) : null}
 
+      {/* Quality badge */}
+      {photo.qualityScore !== undefined && (
+        <div
+          className={`absolute top-1 left-1 z-10 px-1.5 py-0.5 rounded text-xs font-semibold backdrop-blur ${
+            photo.qualityScore >= 70
+              ? 'bg-green-500/80 text-white'
+              : photo.qualityScore >= 40
+                ? 'bg-orange-500/80 text-white'
+                : 'bg-red-500/80 text-white'
+          }`}
+          title={`Netteté: ${photo.blurScore ?? '?'} — Exposition: ${photo.exposureScore ?? '?'}`}
+        >
+          {isHovered ? `Q ${photo.qualityScore}` : photo.qualityScore}
+        </div>
+      )}
+
       {/* Overlay on hover */}
       {isHovered && (
         <div className="absolute inset-0 bg-black/50 flex flex-col justify-between p-2 transition-opacity">

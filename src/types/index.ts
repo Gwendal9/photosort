@@ -10,6 +10,9 @@ export interface Photo {
   createdAt: string;
   modifiedAt: string;
   blobUrl?: string;
+  qualityScore?: number;    // 0-100, score global
+  blurScore?: number;       // 0-100, 100 = très net
+  exposureScore?: number;   // 0-100, 100 = bien exposé
 }
 
 export interface SimilarityGroup {
@@ -28,7 +31,7 @@ export interface TrashItem {
 export interface AnalysisProgress {
   current: number;
   total: number;
-  status: 'idle' | 'scanning' | 'hashing' | 'comparing' | 'complete';
+  status: 'idle' | 'scanning' | 'quality' | 'hashing' | 'comparing' | 'complete';
 }
 
 export interface AppError {

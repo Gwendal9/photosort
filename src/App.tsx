@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { FolderPicker } from './components/folders/FolderPicker';
 import { ComparisonView } from './components/comparison/ComparisonView';
+import { QualityView } from './components/quality/QualityView';
 import { TrashView } from './components/trash/TrashView';
 import { ProgressBar } from './components/common/ProgressBar';
 import { Toast } from './components/common/Toast';
 import { usePhotoStore } from './stores/photoStore';
 import { isFileSystemAccessSupported } from './services/fileSystemService';
 
-type View = 'home' | 'comparison' | 'trash';
+type View = 'home' | 'comparison' | 'quality' | 'trash';
 
 const STATUS_LABELS: Record<string, string> = {
   scanning: 'Scan des dossiers...',
+  quality: 'Analyse de la qualité...',
   hashing: 'Calcul des empreintes...',
   comparing: 'Comparaison des photos...',
   complete: 'Analyse terminée',
@@ -48,6 +50,12 @@ function App() {
                 Comparaison
               </button>
               <button
+                onClick={() => setCurrentView('quality')}
+                className={`px-3 py-2 rounded-md transition-colors ${currentView === 'quality' ? 'bg-white/25 text-white' : 'text-white/70 hover:bg-white/10'}`}
+              >
+                Qualité
+              </button>
+              <button
                 onClick={() => setCurrentView('trash')}
                 className={`px-3 py-2 rounded-md transition-colors ${currentView === 'trash' ? 'bg-white/25 text-white' : 'text-white/70 hover:bg-white/10'}`}
               >
@@ -71,6 +79,7 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {currentView === 'home' && <FolderPicker />}
         {currentView === 'comparison' && <ComparisonView />}
+        {currentView === 'quality' && <QualityView />}
         {currentView === 'trash' && <TrashView />}
       </main>
 
