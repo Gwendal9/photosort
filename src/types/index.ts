@@ -31,7 +31,7 @@ export interface TrashItem {
 export interface AnalysisProgress {
   current: number;
   total: number;
-  status: 'idle' | 'scanning' | 'quality' | 'hashing' | 'comparing' | 'complete';
+  status: 'idle' | 'scanning' | 'hashing' | 'comparing' | 'complete';
 }
 
 export interface AppError {

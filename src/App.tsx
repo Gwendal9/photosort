@@ -12,8 +12,7 @@ type View = 'home' | 'comparison' | 'quality' | 'trash';
 
 const STATUS_LABELS: Record<string, string> = {
   scanning: 'Scan des dossiers...',
-  quality: 'Analyse de la qualité...',
-  hashing: 'Calcul des empreintes...',
+  hashing: 'Analyse des photos...',
   comparing: 'Comparaison des photos...',
   complete: 'Analyse terminée',
 };

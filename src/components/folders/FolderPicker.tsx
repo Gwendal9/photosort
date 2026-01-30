@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
 import { pickDirectory, scanDirectory, isFileSystemAccessSupported, countPhotosInDirectory, IMAGE_EXTENSIONS } from '../../services/fileSystemService';
 import { analyzePhotos } from '../../services/analysisService';
-import { analyzeQuality } from '../../services/qualityService';
 import type { Folder, Photo } from '../../types';
 
 export function FolderPicker() {
@@ -86,14 +85,19 @@ export function FolderPicker() {
         return;
       }
 
-      // Phase 2: Quality analysis
-      const qualityResults = await analyzeQuality(photos, setAnalysisProgress, abort.signal);
+      // Phase 2+3: Hash (with quality) & Compare — single file read per photo
+      const { groups, qualityMap } = await analyzePhotos(
+        photos,
+        similarityThreshold,
+        setAnalysisProgress,
+        abort.signal,
+      );
 
       if (abort.signal.aborted) return;
 
       // Merge quality scores into photos
       const photosWithQuality = photos.map((p) => {
-        const q = qualityResults.get(p.id);
+        const q = qualityMap.get(p.id);
         return q
           ? { ...p, qualityScore: q.qualityScore, blurScore: q.blurScore, exposureScore: q.exposureScore }
           : p;
@@ -102,24 +106,14 @@ export function FolderPicker() {
       setPhotos(photosWithQuality);
       setAllPhotos(photosWithQuality);
 
-      // Phase 3+4: Hash & Compare
-      const groups = await analyzePhotos(
-        photos,
-        similarityThreshold,
-        setAnalysisProgress,
-        abort.signal,
+      setSimilarityGroups(groups);
+      setAnalysisProgress({ current: 0, total: 0, status: 'complete' });
+      showToast(
+        groups.length > 0
+          ? `${groups.length} groupe${groups.length > 1 ? 's' : ''} de photos similaires trouvé${groups.length > 1 ? 's' : ''}`
+          : 'Aucune photo similaire détectée',
+        groups.length > 0 ? 'success' : 'info',
       );
-
-      if (!abort.signal.aborted) {
-        setSimilarityGroups(groups);
-        setAnalysisProgress({ current: 0, total: 0, status: 'complete' });
-        showToast(
-          groups.length > 0
-            ? `${groups.length} groupe${groups.length > 1 ? 's' : ''} de photos similaires trouvé${groups.length > 1 ? 's' : ''}`
-            : 'Aucune photo similaire détectée',
-          groups.length > 0 ? 'success' : 'info',
-        );
-      }
     } catch (error) {
       console.error('Erreur lors de l\'analyse:', error);
       showToast('Erreur lors de l\'analyse', 'error');
