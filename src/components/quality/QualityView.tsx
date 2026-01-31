@@ -1,6 +1,6 @@
-import { useMemo, useState, useCallback, useRef } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
-import { LazyPhotoCard } from '../photos/LazyPhotoCard';
+import { PhotoCard } from '../photos/PhotoCard';
 import { PhotoViewer } from '../common/PhotoViewer';
 
 type QualityCategory = 'all' | 'poor' | 'average' | 'good';
@@ -18,6 +18,8 @@ const TYPE_LABELS: Record<TypeCategory, string> = {
   photo: 'Photos',
   document: 'Documents',
 };
+
+const PAGE_SIZE = 40;
 
 function categorize(score: number | undefined): 'poor' | 'average' | 'good' {
   if (score === undefined) return 'average';
@@ -38,7 +40,9 @@ export function QualityView() {
   const toggleSelect = usePhotoStore((s) => s.toggleSelect);
   const shiftSelect = usePhotoStore((s) => s.shiftSelect);
 
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [viewingPhotoId, setViewingPhotoId] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const batchMode = selectedIds.length > 0;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -73,43 +77,41 @@ export function QualityView() {
       list = list.filter((p) => (p.photoType ?? 'photo') === typeFilter);
     }
 
-    // Sort by quality score ascending (worst first)
     return [...list].sort((a, b) => (a.qualityScore ?? 50) - (b.qualityScore ?? 50));
   }, [photosWithQuality, qualityFilter, typeFilter]);
 
   const filteredIds = useMemo(() => filtered.map((p) => p.id), [filtered]);
 
-  // Ref-stabilize filteredIds so handleToggleSelect callback never changes
+  // Ref-stabilize so handleToggleSelect callback never changes
   const filteredIdsRef = useRef(filteredIds);
   filteredIdsRef.current = filteredIds;
 
+  // Reset pagination when filters change
   const handleQualityFilter = useCallback((f: QualityCategory) => {
     setQualityFilter(f);
+    setVisibleCount(PAGE_SIZE);
   }, [setQualityFilter]);
 
   const handleTypeFilter = useCallback((f: TypeCategory) => {
     setTypeFilter(f);
+    setVisibleCount(PAGE_SIZE);
   }, [setTypeFilter]);
 
   const handleTrashPoor = () => {
     const poorPhotos = photosWithQuality.filter((p) => categorize(p.qualityScore) === 'poor');
     if (poorPhotos.length === 0) return;
-    for (const p of poorPhotos) {
-      addToTrash(p);
-    }
+    for (const p of poorPhotos) addToTrash(p);
     showToast(`${poorPhotos.length} photo${poorPhotos.length > 1 ? 's' : ''} de mauvaise qualité mise${poorPhotos.length > 1 ? 's' : ''} en corbeille`, 'success');
   };
 
   const handleTrashType = (type: 'document') => {
     const targets = photosWithQuality.filter((p) => p.photoType === type);
     if (targets.length === 0) return;
-    for (const p of targets) {
-      addToTrash(p);
-    }
+    for (const p of targets) addToTrash(p);
     showToast(`${targets.length} document${targets.length > 1 ? 's' : ''} mis en corbeille`, 'success');
   };
 
-  // Stable callback — never changes reference, uses ref for latest IDs
+  // Stable callback — never changes reference
   const handleToggleSelect = useCallback((id: string, shiftKey: boolean) => {
     if (shiftKey) {
       shiftSelect(id, filteredIdsRef.current);
@@ -117,6 +119,27 @@ export function QualityView() {
       toggleSelect(id);
     }
   }, [shiftSelect, toggleSelect]);
+
+  const visiblePhotos = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
+
+  // Infinite scroll: auto-load more when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((c) => c + PAGE_SIZE);
+        }
+      },
+      { rootMargin: '600px' },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, visibleCount]);
 
   if (photosWithQuality.length === 0) {
     return (
@@ -213,10 +236,10 @@ export function QualityView() {
         </div>
       </div>
 
-      {/* Photo grid — virtualized: only mounts PhotoCards near viewport */}
+      {/* Photo grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {filtered.map((photo) => (
-          <LazyPhotoCard
+        {visiblePhotos.map((photo) => (
+          <PhotoCard
             key={photo.id}
             photo={photo}
             selected={selectedSet.has(photo.id)}
@@ -227,13 +250,15 @@ export function QualityView() {
         ))}
       </div>
 
+      {/* Infinite scroll sentinel */}
+      {hasMore && <div ref={sentinelRef} className="h-4" />}
+
       {filtered.length === 0 && (
         <p className="text-center text-white/50 py-8">
           Aucune photo dans cette catégorie.
         </p>
       )}
 
-      {/* Bottom spacing for selection bar */}
       {batchMode && <div className="h-16" />}
 
       {/* Photo viewer lightbox */}
