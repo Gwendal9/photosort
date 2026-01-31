@@ -1,7 +1,7 @@
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Photo } from '../../types';
 import { usePhotoStore } from '../../stores/photoStore';
-import { useBlobUrl } from '../../hooks/useBlobUrl';
+import { getFullBlobUrl, getCachedBlobUrl } from '../../services/fileSystemService';
 
 interface PhotoViewerProps {
   photo: Photo;
@@ -17,8 +17,17 @@ function formatSize(bytes: number) {
 }
 
 export function PhotoViewer({ photo, photoIds, onClose, onNavigate }: PhotoViewerProps) {
-  const { url: imageSrc } = useBlobUrl(photo.id);
+  // Start with thumbnail (instant), upgrade to full-res
+  const [imageSrc, setImageSrc] = useState<string | null>(getCachedBlobUrl(photo.id));
   const addToTrash = usePhotoStore((s) => s.addToTrash);
+
+  useEffect(() => {
+    let cancelled = false;
+    getFullBlobUrl(photo.id).then((url) => {
+      if (!cancelled) setImageSrc(url);
+    });
+    return () => { cancelled = true; };
+  }, [photo.id]);
 
   const currentIndex = photoIds.indexOf(photo.id);
   const hasPrev = currentIndex > 0;

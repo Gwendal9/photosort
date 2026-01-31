@@ -37,7 +37,10 @@ interface FileEntry {
 
 // Internal registry: maps photo ID → file entry (non-serializable handles)
 const fileRegistry = new Map<string, FileEntry>();
-const blobUrlRegistry = new Map<string, string>();
+const blobUrlRegistry = new Map<string, string>();      // full-res blob URLs (for viewer)
+const thumbUrlRegistry = new Map<string, string>();      // thumbnail blob URLs (for grid)
+
+const THUMB_SIZE = 300; // max dimension for grid thumbnails
 
 export function isFileSystemAccessSupported(): boolean {
   return 'showDirectoryPicker' in window;
@@ -83,21 +86,33 @@ export async function scanDirectory(
           relativePath,
         });
 
-        // Try to get image dimensions + create blob URL while we have the File
+        // Try to get image dimensions + create thumbnail while we have the File
         let width = 0;
         let height = 0;
         try {
           const bitmap = await createImageBitmap(file);
           width = bitmap.width;
           height = bitmap.height;
+
+          // Generate thumbnail for grid display (avoids decoding full-res on scroll)
+          if (!thumbUrlRegistry.has(id)) {
+            const scale = Math.min(1, THUMB_SIZE / Math.max(width, height));
+            const tw = Math.round(width * scale);
+            const th = Math.round(height * scale);
+            const canvas = new OffscreenCanvas(tw, th);
+            const ctx = canvas.getContext('2d')!;
+            ctx.drawImage(bitmap, 0, 0, tw, th);
+            const thumbBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.7 });
+            thumbUrlRegistry.set(id, URL.createObjectURL(thumbBlob));
+          }
+
           bitmap.close();
         } catch {
           // Can't decode (e.g. RAW files) — dimensions stay 0
-        }
-
-        // Cache blob URL now — avoids a second getFile() later
-        if (!blobUrlRegistry.has(id)) {
-          blobUrlRegistry.set(id, URL.createObjectURL(file));
+          // Fallback: use full file as blob URL
+          if (!thumbUrlRegistry.has(id)) {
+            thumbUrlRegistry.set(id, URL.createObjectURL(file));
+          }
         }
 
         photos.push({
@@ -137,12 +152,30 @@ export function createBlobUrl(photoId: string, file: File): string {
   return url;
 }
 
-/** Synchronous cache check — returns cached blob URL or null */
+/** Synchronous cache check — returns thumbnail URL for grid display */
 export function getCachedBlobUrl(photoId: string): string | null {
-  return blobUrlRegistry.get(photoId) ?? null;
+  return thumbUrlRegistry.get(photoId) ?? blobUrlRegistry.get(photoId) ?? null;
 }
 
+/** Get thumbnail blob URL (for grid cards) */
 export async function getBlobUrl(photoId: string): Promise<string> {
+  const thumb = thumbUrlRegistry.get(photoId);
+  if (thumb) return thumb;
+
+  const existing = blobUrlRegistry.get(photoId);
+  if (existing) return existing;
+
+  const entry = fileRegistry.get(photoId);
+  if (!entry) throw new Error(`Photo ${photoId} not found in registry`);
+
+  const file = await entry.fileHandle.getFile();
+  const url = URL.createObjectURL(file);
+  blobUrlRegistry.set(photoId, url);
+  return url;
+}
+
+/** Get full-resolution blob URL (for viewer/lightbox) */
+export async function getFullBlobUrl(photoId: string): Promise<string> {
   const existing = blobUrlRegistry.get(photoId);
   if (existing) return existing;
 
@@ -176,17 +209,16 @@ export async function preloadBlobUrls(photoIds: string[], concurrency = 6): Prom
 
 export function revokeBlobUrl(photoId: string): void {
   const url = blobUrlRegistry.get(photoId);
-  if (url) {
-    URL.revokeObjectURL(url);
-    blobUrlRegistry.delete(photoId);
-  }
+  if (url) { URL.revokeObjectURL(url); blobUrlRegistry.delete(photoId); }
+  const thumb = thumbUrlRegistry.get(photoId);
+  if (thumb) { URL.revokeObjectURL(thumb); thumbUrlRegistry.delete(photoId); }
 }
 
 export function revokeAllBlobUrls(): void {
-  for (const url of blobUrlRegistry.values()) {
-    URL.revokeObjectURL(url);
-  }
+  for (const url of blobUrlRegistry.values()) URL.revokeObjectURL(url);
   blobUrlRegistry.clear();
+  for (const url of thumbUrlRegistry.values()) URL.revokeObjectURL(url);
+  thumbUrlRegistry.clear();
 }
 
 export interface DeleteResult {

@@ -159,19 +159,79 @@ function isDocument(
 // --- Quality scoring ---
 
 function computeBlurScore(gray: Float32Array, w: number, h: number): number {
+  // Split image into blocks and take the sharpest block.
+  // This prevents artistic bokeh (sharp subject + blurred bg) from being
+  // penalized: if any region is sharp, the photo is intentionally composed.
+  const BLOCKS = 4; // 4x4 = 16 blocks
+  const bw = Math.floor((w - 2) / BLOCKS);
+  const bh = Math.floor((h - 2) / BLOCKS);
+
+  if (bw < 4 || bh < 4) {
+    // Image too small for blocks, fall back to global
+    return computeLaplacianVariance(gray, w, 1, 1, w - 2, h - 2);
+  }
+
+  let maxScore = 0;
+  let globalSum = 0;
+  let globalSumSq = 0;
+  let globalCount = 0;
+
+  for (let by = 0; by < BLOCKS; by++) {
+    for (let bx = 0; bx < BLOCKS; bx++) {
+      const x0 = 1 + bx * bw;
+      const y0 = 1 + by * bh;
+      const x1 = (bx === BLOCKS - 1) ? w - 1 : x0 + bw;
+      const y1 = (by === BLOCKS - 1) ? h - 1 : y0 + bh;
+
+      let sum = 0;
+      let sumSq = 0;
+      let count = 0;
+
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const idx = y * w + x;
+          const lap =
+            gray[idx - w] + gray[idx - 1] + -4 * gray[idx] + gray[idx + 1] + gray[idx + w];
+          sum += lap;
+          sumSq += lap * lap;
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        const mean = sum / count;
+        const variance = sumSq / count - mean * mean;
+        const score = Math.min(variance / 800, 1) * 100;
+        if (score > maxScore) maxScore = score;
+        globalSum += sum;
+        globalSumSq += sumSq;
+        globalCount += count;
+      }
+    }
+  }
+
+  // Final score: 70% sharpest block + 30% global average
+  // Photos with intentional blur score high because their sharp region dominates
+  const globalMean = globalSum / globalCount;
+  const globalVariance = globalSumSq / globalCount - globalMean * globalMean;
+  const globalScore = Math.min(globalVariance / 800, 1) * 100;
+
+  return Math.round(0.7 * maxScore + 0.3 * globalScore);
+}
+
+function computeLaplacianVariance(
+  gray: Float32Array, w: number,
+  x0: number, y0: number, x1: number, y1: number,
+): number {
   let sum = 0;
   let sumSq = 0;
   let count = 0;
 
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
       const idx = y * w + x;
       const lap =
-        gray[idx - w] +
-        gray[idx - 1] +
-        -4 * gray[idx] +
-        gray[idx + 1] +
-        gray[idx + w];
+        gray[idx - w] + gray[idx - 1] + -4 * gray[idx] + gray[idx + 1] + gray[idx + w];
       sum += lap;
       sumSq += lap * lap;
       count++;
