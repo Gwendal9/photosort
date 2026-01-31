@@ -1,6 +1,6 @@
-// Web Worker for perceptual image hashing + quality analysis + type classification
+// Web Worker for perceptual image hashing + quality analysis + document detection
 // Computes: 16x16 gradient hash (256-bit) + Laplacian sharpness + exposure histogram
-//           + screenshot/document detection
+//           + document detection
 
 interface AnalyzeRequest {
   type: 'hash';
@@ -15,7 +15,7 @@ interface AnalyzeResponse {
   qualityScore: number;
   blurScore: number;
   exposureScore: number;
-  photoType: 'photo' | 'screenshot' | 'document';
+  photoType: 'photo' | 'document';
 }
 
 interface ErrorResponse {
@@ -93,8 +93,11 @@ self.onmessage = async (e: MessageEvent<AnalyzeRequest>) => {
     const exposureScore = computeExposureScore(histogram, qw * qh);
     const qualityScore = Math.round(0.7 * blurScore + 0.3 * exposureScore);
 
-    // --- Classification ---
-    const photoType = classifyImage(qualPixels, qw, qh, imgWidth, imgHeight, histogram);
+    // --- Classification: document vs photo ---
+    const totalPixels = qw * qh;
+    const photoType = isDocument(qualPixels, totalPixels, imgWidth, imgHeight, histogram)
+      ? 'document' as const
+      : 'photo' as const;
 
     const response: AnalyzeResponse = {
       type: 'result',
@@ -116,26 +119,7 @@ self.onmessage = async (e: MessageEvent<AnalyzeRequest>) => {
   }
 };
 
-// --- Classification: screenshot vs document vs photo ---
-
-function classifyImage(
-  pixels: Uint8ClampedArray,
-  w: number,
-  h: number,
-  origW: number,
-  origH: number,
-  histogram: Uint32Array,
-): 'photo' | 'screenshot' | 'document' {
-  const totalPixels = w * h;
-
-  // Check document first (mostly white background + low color diversity)
-  if (isDocument(pixels, totalPixels, origW, origH, histogram)) return 'document';
-
-  // Check screenshot (screen aspect ratio + uniform edges)
-  if (isScreenshot(pixels, w, h, origW, origH)) return 'screenshot';
-
-  return 'photo';
-}
+// --- Document detection ---
 
 function isDocument(
   pixels: Uint8ClampedArray,
@@ -170,70 +154,6 @@ function isDocument(
   if (hasDocRatio && whitePct > 0.45 && colorBuckets.size < 250) return true;
 
   return false;
-}
-
-function isScreenshot(
-  pixels: Uint8ClampedArray,
-  w: number,
-  h: number,
-  origW: number,
-  origH: number,
-): boolean {
-  // Common screen aspect ratios (both orientations)
-  const ratio = origW / origH;
-  const screenRatios = [
-    16 / 9, 16 / 10, 4 / 3, 3 / 2,       // landscape
-    9 / 16, 10 / 16, 3 / 4, 2 / 3,        // portrait
-    19.5 / 9, 9 / 19.5, 20 / 9, 9 / 20,   // modern phones
-  ];
-  const hasScreenRatio = screenRatios.some((r) => Math.abs(ratio - r) < 0.05);
-  if (!hasScreenRatio) return false;
-
-  // Check for uniform color bands at top and bottom (status bar, nav bar)
-  const topBandUniform = isBandUniform(pixels, w, 0, Math.min(Math.round(h * 0.06), 8));
-  const bottomBandUniform = isBandUniform(pixels, w, h - Math.min(Math.round(h * 0.06), 8), h);
-
-  if (topBandUniform || bottomBandUniform) return true;
-
-  // Also flag common exact screen resolutions
-  const commonRes = [
-    [1920, 1080], [2560, 1440], [1366, 768], [1280, 720],
-    [1080, 1920], [1170, 2532], [1284, 2778], [1290, 2796],
-    [1440, 2560], [1440, 3200], [750, 1334], [1125, 2436],
-    [828, 1792], [1242, 2688], [1080, 2400], [1080, 2340],
-    [2048, 2732], [1668, 2388], [1620, 2160], // tablets
-  ];
-  if (commonRes.some(([rw, rh]) => origW === rw && origH === rh)) return true;
-
-  return false;
-}
-
-function isBandUniform(pixels: Uint8ClampedArray, w: number, yStart: number, yEnd: number): boolean {
-  if (yEnd <= yStart || yEnd - yStart < 2) return false;
-
-  // Sample the first pixel color of the band
-  const idx0 = yStart * w * 4;
-  const r0 = pixels[idx0];
-  const g0 = pixels[idx0 + 1];
-  const b0 = pixels[idx0 + 2];
-
-  let diffCount = 0;
-  const totalSampled = (yEnd - yStart) * w;
-  const threshold = totalSampled * 0.15; // allow 15% variation
-
-  for (let y = yStart; y < yEnd; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = (y * w + x) * 4;
-      const dr = Math.abs(pixels[idx] - r0);
-      const dg = Math.abs(pixels[idx + 1] - g0);
-      const db = Math.abs(pixels[idx + 2] - b0);
-      if (dr + dg + db > 30) {
-        diffCount++;
-        if (diffCount > threshold) return false;
-      }
-    }
-  }
-  return true;
 }
 
 // --- Quality scoring ---

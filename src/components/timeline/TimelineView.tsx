@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
 import { PhotoCard } from '../photos/PhotoCard';
+import { PhotoViewer } from '../common/PhotoViewer';
 import type { Photo } from '../../types';
 
 interface DayGroup {
@@ -34,6 +35,7 @@ function toDayKey(isoDate: string): string {
 export function TimelineView() {
   const { photos, selectedIds, toggleSelect, shiftSelect, selectAll, typeFilter, setTypeFilter } = usePhotoStore();
   const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE);
+  const [viewingPhotoId, setViewingPhotoId] = useState<string | null>(null);
 
   const batchMode = selectedIds.length > 0;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -126,7 +128,7 @@ export function TimelineView() {
           {totalPhotos} photo{totalPhotos > 1 ? 's' : ''} sur {dayGroups.length} jour{dayGroups.length > 1 ? 's' : ''}
         </p>
         <div className="flex gap-1 bg-white/5 rounded-lg p-1">
-          {(['all', 'photo', 'screenshot', 'document'] as const).map((cat) => (
+          {(['all', 'photo', 'document'] as const).map((cat) => (
             <button
               key={cat}
               onClick={() => handleTypeFilter(cat)}
@@ -136,7 +138,7 @@ export function TimelineView() {
                   : 'text-white/50 hover:text-white/80'
               }`}
             >
-              {{ all: 'Tous', photo: 'Photos', screenshot: 'Captures', document: 'Documents' }[cat]}
+              {{ all: 'Tous', photo: 'Photos', document: 'Documents' }[cat]}
             </button>
           ))}
         </div>
@@ -177,6 +179,7 @@ export function TimelineView() {
                   selected={selectedSet.has(photo.id)}
                   onToggleSelect={handleToggleSelect}
                   batchMode={batchMode}
+                  onView={setViewingPhotoId}
                 />
               ))}
             </div>
@@ -197,6 +200,22 @@ export function TimelineView() {
 
       {/* Bottom spacing for selection bar */}
       {batchMode && <div className="h-16" />}
+
+      {/* Photo viewer lightbox */}
+      {viewingPhotoId && (() => {
+        const allVisiblePhotos = visibleGroups.flatMap((g) => g.photos);
+        const viewingPhoto = allVisiblePhotos.find((p) => p.id === viewingPhotoId);
+        if (!viewingPhoto) return null;
+        return (
+          <PhotoViewer
+            photo={viewingPhoto}
+            photoIds={allVisibleIds}
+
+            onClose={() => setViewingPhotoId(null)}
+            onNavigate={setViewingPhotoId}
+          />
+        );
+      })()}
     </div>
   );
 }

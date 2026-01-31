@@ -9,7 +9,7 @@ interface ToastMessage {
 }
 
 type QualityFilter = 'all' | 'poor' | 'average' | 'good';
-type TypeFilter = 'all' | 'photo' | 'screenshot' | 'document';
+type TypeFilter = 'all' | 'photo' | 'document';
 
 interface PhotoStore {
   // State
@@ -22,6 +22,7 @@ interface PhotoStore {
   analysisProgress: AnalysisProgress;
   error: AppError | null;
   similarityThreshold: number;
+  analysisThreshold: number | null;
   qualityFilter: QualityFilter;
   typeFilter: TypeFilter;
   selectedIds: string[];
@@ -63,6 +64,7 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
   analysisProgress: { current: 0, total: 0, status: 'idle' },
   error: null,
   similarityThreshold: 0.85,
+  analysisThreshold: null,
   qualityFilter: 'all',
   typeFilter: 'all',
   selectedIds: [],
@@ -239,11 +241,12 @@ export const usePhotoStore = create<PhotoStore>((set, get) => ({
     }),
 
   startAnalysis: () =>
-    set({
+    set((state) => ({
       isAnalyzing: true,
       analysisProgress: { current: 0, total: 0, status: 'scanning' },
+      analysisThreshold: state.similarityThreshold,
       error: null,
-    }),
+    })),
 
   stopAnalysis: () =>
     set({

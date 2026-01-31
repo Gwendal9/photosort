@@ -8,6 +8,7 @@ interface SimilarityGroupCardProps {
   group: SimilarityGroup;
   isExpanded: boolean;
   onToggle: () => void;
+  onView?: (id: string) => void;
 }
 
 function ThumbnailPreview({ photoId }: { photoId: string }) {
@@ -22,7 +23,7 @@ function ThumbnailPreview({ photoId }: { photoId: string }) {
   );
 }
 
-export function SimilarityGroupCard({ group, isExpanded, onToggle }: SimilarityGroupCardProps) {
+export function SimilarityGroupCard({ group, isExpanded, onToggle, onView }: SimilarityGroupCardProps) {
   const { addToTrash } = usePhotoStore();
 
   // Auto-select the photo with the best quality score (fallback to first)
@@ -109,7 +110,7 @@ export function SimilarityGroupCard({ group, isExpanded, onToggle }: SimilarityG
                 }`}
                 onClick={() => setKeepPhoto(photo.id)}
               >
-                <PhotoCard photo={photo} />
+                <PhotoCard photo={photo} onView={onView} />
                 {keepPhoto === photo.id && (
                   <div className="absolute top-2 left-2 bg-green-500/80 backdrop-blur text-white text-xs px-2 py-1 rounded">
                     Garder

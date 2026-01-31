@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
 import { pickDirectory, scanDirectory, isFileSystemAccessSupported, countPhotosInDirectory, IMAGE_EXTENSIONS } from '../../services/fileSystemService';
 import { analyzePhotos } from '../../services/analysisService';
@@ -7,6 +7,9 @@ import type { Folder, Photo } from '../../types';
 export function FolderPicker() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [allPhotos, setAllPhotos] = useState<Photo[]>([]);
+  const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [analysisStarted, setAnalysisStarted] = useState(false);
+  const [resultSummary, setResultSummary] = useState<{ photos: number; groups: number } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const {
     setSelectedFolders,
@@ -22,6 +25,21 @@ export function FolderPicker() {
   } = usePhotoStore();
 
   const supported = isFileSystemAccessSupported();
+
+  // Reset completion animation after 5 seconds
+  useEffect(() => {
+    if (analysisComplete) {
+      const timer = setTimeout(() => setAnalysisComplete(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [analysisComplete]);
+
+  // Reset start animation after 2 seconds
+  useEffect(() => {
+    if (analysisStarted && !isAnalyzing) {
+      setAnalysisStarted(false);
+    }
+  }, [analysisStarted, isAnalyzing]);
 
   const handleAddFolder = async () => {
     if (!supported) return;
@@ -62,6 +80,9 @@ export function FolderPicker() {
 
     setSelectedFolders(activeFolders);
     beginAnalysis();
+    setAnalysisStarted(true);
+    setAnalysisComplete(false);
+    setResultSummary(null);
 
     const abort = new AbortController();
     abortRef.current = abort;
@@ -108,6 +129,8 @@ export function FolderPicker() {
 
       setSimilarityGroups(groups);
       setAnalysisProgress({ current: 0, total: 0, status: 'complete' });
+      setAnalysisComplete(true);
+      setResultSummary({ photos: photosWithQuality.length, groups: groups.length });
       showToast(
         groups.length > 0
           ? `${groups.length} groupe${groups.length > 1 ? 's' : ''} de photos similaires trouvé${groups.length > 1 ? 's' : ''}`
@@ -201,8 +224,9 @@ export function FolderPicker() {
           )}
 
           <div className="mb-6 pt-4 border-t border-white/10">
-            <label className="block text-sm font-medium text-white/70 mb-2">
-              Seuil de similarité : {Math.round(similarityThreshold * 100)}%
+            <label className="flex items-center justify-between text-sm font-medium text-white/70 mb-2">
+              <span>Seuil de similarité</span>
+              <span className="text-white font-semibold">{Math.round(similarityThreshold * 100)}%</span>
             </label>
             <input
               type="range"
@@ -244,8 +268,49 @@ export function FolderPicker() {
         </div>
       )}
 
+      {/* Analysis started animation */}
+      {isAnalyzing && analysisStarted && (
+        <div className="glass-card p-6 text-center animate-slide-up">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500/20 mb-4">
+            <svg className="w-8 h-8 text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-1">Analyse en cours...</h3>
+          <p className="text-white/60 text-sm">
+            Analyse des photos au seuil de {Math.round(similarityThreshold * 100)}%
+          </p>
+        </div>
+      )}
+
+      {/* Analysis complete animation */}
+      {analysisComplete && resultSummary && (
+        <div className="glass-card p-6 text-center animate-slide-up border border-green-400/30">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/20 mb-4">
+            <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-2">Analyse terminée</h3>
+          <div className="flex justify-center gap-8 text-sm">
+            <div>
+              <p className="text-2xl font-bold text-blue-300">{resultSummary.photos}</p>
+              <p className="text-white/50">photos analysées</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-orange-300">{resultSummary.groups}</p>
+              <p className="text-white/50">groupes similaires</p>
+            </div>
+          </div>
+          <p className="text-white/40 text-xs mt-3">
+            Consultez les onglets Comparaison, Qualité et Timeline pour explorer vos photos.
+          </p>
+        </div>
+      )}
+
       {/* Show scanned photos count */}
-      {allPhotos.length > 0 && !isAnalyzing && (
+      {allPhotos.length > 0 && !isAnalyzing && !analysisComplete && (
         <div className="glass-card p-4 text-center">
           <p className="text-white/70">
             {allPhotos.length} photo{allPhotos.length > 1 ? 's' : ''} trouvée{allPhotos.length > 1 ? 's' : ''}

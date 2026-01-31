@@ -1,12 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
 import { SimilarityGroupCard } from './SimilarityGroup';
+import { PhotoViewer } from '../common/PhotoViewer';
 
 export function ComparisonView() {
-  const { similarityGroups, similarityThreshold, setSimilarityThreshold } = usePhotoStore();
+  const { similarityGroups, similarityThreshold, setSimilarityThreshold, analysisThreshold } = usePhotoStore();
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [viewingPhotoId, setViewingPhotoId] = useState<string | null>(null);
 
   const filteredGroups = similarityGroups.filter((g) => g.similarity >= similarityThreshold);
+
+  const allGroupPhotos = useMemo(
+    () => filteredGroups.flatMap((g) => g.photos),
+    [filteredGroups],
+  );
+  const allGroupPhotoIds = useMemo(
+    () => allGroupPhotos.map((p) => p.id),
+    [allGroupPhotos],
+  );
 
   if (similarityGroups.length === 0) {
     return (
@@ -55,20 +66,56 @@ export function ComparisonView() {
 
         {/* Similarity threshold slider */}
         <div className="mt-6 pt-6 border-t border-white/10">
-          <label className="block text-sm font-medium text-white/70 mb-2">
-            Seuil de similarité : {Math.round(similarityThreshold * 100)}%
-          </label>
-          <input
-            type="range"
-            min="50"
-            max="99"
-            value={similarityThreshold * 100}
-            onChange={(e) => setSimilarityThreshold(Number(e.target.value) / 100)}
-            className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
-          />
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-white/70">
+              Seuil de similarité
+            </label>
+            <span className="text-2xl font-bold text-white tabular-nums">
+              {Math.round(similarityThreshold * 100)}%
+            </span>
+          </div>
+          {/* Custom slider track */}
+          <div className="relative h-10 flex items-center">
+            {/* Track background */}
+            <div className="absolute inset-x-0 h-2 rounded-lg overflow-hidden top-1/2 -translate-y-1/2">
+              {/* Full track */}
+              <div className="absolute inset-0 bg-white/20 rounded-lg" />
+              {/* Red zone below analysis threshold */}
+              {analysisThreshold !== null && (
+                <div
+                  className="absolute left-0 top-0 bottom-0 bg-red-500/25 rounded-l-lg"
+                  style={{ width: `${((analysisThreshold * 100 - 50) / 49) * 100}%` }}
+                />
+              )}
+            </div>
+            {/* Analysis threshold marker */}
+            {analysisThreshold !== null && (
+              <div
+                className="absolute flex flex-col items-center pointer-events-none"
+                style={{ left: `${((analysisThreshold * 100 - 50) / 49) * 100}%`, transform: 'translateX(-50%)', top: 0, bottom: 0 }}
+              >
+                <span className="text-[10px] font-semibold text-orange-300 whitespace-nowrap bg-orange-500/20 px-1 rounded">
+                  Analyse {Math.round(analysisThreshold * 100)}%
+                </span>
+                <div className="w-0.5 flex-1 bg-orange-400/60 rounded mt-0.5" />
+              </div>
+            )}
+            {/* Native range input */}
+            <input
+              type="range"
+              min="50"
+              max="99"
+              value={similarityThreshold * 100}
+              onChange={(e) => setSimilarityThreshold(Number(e.target.value) / 100)}
+              className="absolute inset-x-0 h-2 appearance-none bg-transparent cursor-pointer z-10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-md [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-track]:bg-transparent"
+            />
+          </div>
           <div className="flex justify-between text-xs text-white/40 mt-1">
-            <span>Plus permissif</span>
-            <span>Plus strict</span>
+            <span>50% — Plus permissif</span>
+            {analysisThreshold !== null && similarityThreshold < analysisThreshold && (
+              <span className="text-red-300 font-medium">En dessous du seuil d'analyse</span>
+            )}
+            <span>99% — Plus strict</span>
           </div>
         </div>
       </div>
@@ -87,10 +134,26 @@ export function ComparisonView() {
               group={group}
               isExpanded={expandedGroup === group.id}
               onToggle={() => setExpandedGroup(expandedGroup === group.id ? null : group.id)}
+              onView={setViewingPhotoId}
             />
           ))}
         </div>
       )}
+
+      {/* Photo viewer lightbox */}
+      {viewingPhotoId && (() => {
+        const viewingPhoto = allGroupPhotos.find((p) => p.id === viewingPhotoId);
+        if (!viewingPhoto) return null;
+        return (
+          <PhotoViewer
+            photo={viewingPhoto}
+            photoIds={allGroupPhotoIds}
+
+            onClose={() => setViewingPhotoId(null)}
+            onNavigate={setViewingPhotoId}
+          />
+        );
+      })()}
     </div>
   );
 }

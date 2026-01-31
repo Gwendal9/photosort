@@ -1,6 +1,6 @@
 // Core domain types for PhotoSort
 
-export type PhotoType = 'photo' | 'screenshot' | 'document';
+export type PhotoType = 'photo' | 'document';
 
 export interface Photo {
   id: string;
@@ -15,7 +15,7 @@ export interface Photo {
   qualityScore?: number;    // 0-100, score global
   blurScore?: number;       // 0-100, 100 = très net
   exposureScore?: number;   // 0-100, 100 = bien exposé
-  photoType?: PhotoType;    // classification: photo, screenshot, document
+  photoType?: PhotoType;    // classification: photo, document
 }
 
 export interface SimilarityGroup {
