@@ -1,4 +1,4 @@
-import { useState, useRef, memo } from 'react';
+import { useRef, memo } from 'react';
 import type { Photo } from '../../types';
 import { usePhotoStore } from '../../stores/photoStore';
 import { useBlobUrl } from '../../hooks/useBlobUrl';
@@ -13,19 +13,17 @@ interface PhotoCardProps {
   onView?: (id: string) => void;
 }
 
+const cardStyle: React.CSSProperties = {
+  contentVisibility: 'auto',
+  containIntrinsicSize: 'auto 200px',
+};
+
 export const PhotoCard = memo(function PhotoCard({ photo, selectable = false, onSelect, selected, onToggleSelect, batchMode, onView }: PhotoCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const addToTrash = usePhotoStore((s) => s.addToTrash);
   const cardRef = useRef<HTMLDivElement>(null);
   const { url: imageSrc, loading, error: imageError } = useBlobUrl(photo.id, cardRef);
 
   const showCheckbox = batchMode || selected;
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} o`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-  };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -44,11 +42,10 @@ export const PhotoCard = memo(function PhotoCard({ photo, selectable = false, on
   return (
     <div
       ref={cardRef}
+      style={cardStyle}
       className={`relative group rounded-lg overflow-hidden bg-white/5 aspect-square ${
         selected ? 'ring-2 ring-blue-400' : ''
       } ${onView ? 'cursor-pointer' : ''}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
     >
       {/* Loading placeholder */}
@@ -62,7 +59,7 @@ export const PhotoCard = memo(function PhotoCard({ photo, selectable = false, on
         <img
           src={imageSrc}
           alt={photo.filename}
-          className={`w-full h-full object-cover transition-opacity duration-200 ${!loading ? 'opacity-100' : 'opacity-0'}`}
+          className={`w-full h-full object-cover ${!loading ? 'opacity-100' : 'opacity-0'}`}
           loading="lazy"
           decoding="async"
         />
@@ -74,11 +71,13 @@ export const PhotoCard = memo(function PhotoCard({ photo, selectable = false, on
         </div>
       ) : null}
 
-      {/* Batch selection checkbox */}
-      {onToggleSelect && (showCheckbox || isHovered) && (
+      {/* Batch selection checkbox — visible when selected/batch or on hover */}
+      {onToggleSelect && (
         <button
           onClick={handleCheckboxClick}
-          className={`absolute top-1 left-1 z-20 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+          className={`absolute top-1 left-1 z-20 w-5 h-5 rounded border-2 flex items-center justify-center ${
+            showCheckbox ? 'visible' : 'invisible group-hover:visible'
+          } ${
             selected
               ? 'bg-blue-500 border-blue-400'
               : 'bg-black/40 border-white/50 hover:border-white/80'
@@ -92,7 +91,7 @@ export const PhotoCard = memo(function PhotoCard({ photo, selectable = false, on
         </button>
       )}
 
-      {/* Quality badge — shifted right when checkbox is visible */}
+      {/* Quality badge — shifted right when checkbox exists */}
       {photo.qualityScore !== undefined && (
         <div
           className={`absolute ${onToggleSelect ? 'top-1 left-7' : 'top-1 left-1'} z-10 px-1.5 py-0.5 rounded text-xs font-semibold ${
@@ -104,7 +103,8 @@ export const PhotoCard = memo(function PhotoCard({ photo, selectable = false, on
           }`}
           title={`Netteté: ${photo.blurScore ?? '?'} — Exposition: ${photo.exposureScore ?? '?'}`}
         >
-          {isHovered ? `Q ${photo.qualityScore}` : photo.qualityScore}
+          <span className="group-hover:hidden">{photo.qualityScore}</span>
+          <span className="hidden group-hover:inline">Q {photo.qualityScore}</span>
         </div>
       )}
 
@@ -115,35 +115,32 @@ export const PhotoCard = memo(function PhotoCard({ photo, selectable = false, on
         </div>
       )}
 
-      {/* Overlay on hover */}
-      {isHovered && (
-        <div className="absolute inset-0 bg-black/50 flex flex-col justify-between p-2">
-          <div className="flex justify-end">
-            {selectable && onSelect && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onSelect(photo.id); }}
-                className="p-1 bg-white/20 rounded-full hover:bg-white/30"
-              >
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </button>
-            )}
+      {/* Overlay on hover — invisible/visible avoids GPU compositing layers */}
+      <div className="absolute inset-0 bg-black/50 invisible group-hover:visible flex flex-col justify-between p-2 pointer-events-none">
+        <div className="flex justify-end pointer-events-auto">
+          {selectable && onSelect && (
             <button
-              onClick={handleDelete}
-              className="p-1 bg-red-500/30 rounded-full hover:bg-red-500/50 ml-1"
+              onClick={(e) => { e.stopPropagation(); onSelect(photo.id); }}
+              className="p-1 bg-white/20 rounded-full hover:bg-white/30"
             >
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </button>
-          </div>
-          <div className="text-white text-xs">
-            <p className="truncate">{photo.filename}</p>
-            <p>{formatSize(photo.size)}</p>
-          </div>
+          )}
+          <button
+            onClick={handleDelete}
+            className="p-1 bg-red-500/30 rounded-full hover:bg-red-500/50 ml-1"
+          >
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
         </div>
-      )}
+        <div className="text-white text-xs">
+          <p className="truncate">{photo.filename}</p>
+        </div>
+      </div>
     </div>
   );
 });

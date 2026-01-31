@@ -137,25 +137,25 @@ export function QualityView() {
 
   return (
     <div className="space-y-6">
-      {/* Stats summary */}
+      {/* Stats summary — no backdrop-blur for scroll performance */}
       <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
-        <div className="glass-card p-3 text-center">
+        <div className="bg-white/8 border border-white/15 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-green-400">{stats.good}</p>
           <p className="text-xs text-white/60">Bonnes</p>
         </div>
-        <div className="glass-card p-3 text-center">
+        <div className="bg-white/8 border border-white/15 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-orange-400">{stats.average}</p>
           <p className="text-xs text-white/60">Moyennes</p>
         </div>
-        <div className="glass-card p-3 text-center">
+        <div className="bg-white/8 border border-white/15 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-red-400">{stats.poor}</p>
           <p className="text-xs text-white/60">Mauvaises</p>
         </div>
-        <div className="glass-card p-3 text-center">
+        <div className="bg-white/8 border border-white/15 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-blue-400">{stats.realPhotos}</p>
           <p className="text-xs text-white/60">Photos</p>
         </div>
-        <div className="glass-card p-3 text-center">
+        <div className="bg-white/8 border border-white/15 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-cyan-400">{stats.documents}</p>
           <p className="text-xs text-white/60">Documents</p>
         </div>

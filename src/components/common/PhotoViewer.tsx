@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import type { Photo } from '../../types';
+import { usePhotoStore } from '../../stores/photoStore';
 import { useBlobUrl } from '../../hooks/useBlobUrl';
 
 interface PhotoViewerProps {
@@ -17,6 +18,7 @@ function formatSize(bytes: number) {
 
 export function PhotoViewer({ photo, photoIds, onClose, onNavigate }: PhotoViewerProps) {
   const { url: imageSrc } = useBlobUrl(photo.id);
+  const addToTrash = usePhotoStore((s) => s.addToTrash);
 
   const currentIndex = photoIds.indexOf(photo.id);
   const hasPrev = currentIndex > 0;
@@ -30,15 +32,28 @@ export function PhotoViewer({ photo, photoIds, onClose, onNavigate }: PhotoViewe
     if (hasNext) onNavigate(photoIds[currentIndex + 1]);
   }, [hasNext, onNavigate, photoIds, currentIndex]);
 
+  const handleTrash = useCallback(() => {
+    // Determine where to navigate after trashing
+    if (hasNext) {
+      onNavigate(photoIds[currentIndex + 1]);
+    } else if (hasPrev) {
+      onNavigate(photoIds[currentIndex - 1]);
+    } else {
+      onClose();
+    }
+    addToTrash(photo);
+  }, [addToTrash, photo, hasNext, hasPrev, photoIds, currentIndex, onNavigate, onClose]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       else if (e.key === 'ArrowLeft') goPrev();
       else if (e.key === 'ArrowRight') goNext();
+      else if (e.key === 'Delete' || e.key === 'Backspace') handleTrash();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, goPrev, goNext]);
+  }, [onClose, goPrev, goNext, handleTrash]);
 
   // Prevent body scroll while open
   useEffect(() => {
@@ -119,9 +134,21 @@ export function PhotoViewer({ photo, photoIds, onClose, onNavigate }: PhotoViewe
             </span>
           )}
         </div>
-        <span className="text-white/50">
-          {currentIndex + 1} / {photoIds.length}
-        </span>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleTrash}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/30 border border-red-400/30 rounded-lg hover:bg-red-500/50 transition-colors text-white text-xs"
+            title="Supprimer (Delete)"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Corbeille
+          </button>
+          <span className="text-white/50">
+            {currentIndex + 1} / {photoIds.length}
+          </span>
+        </div>
       </div>
     </div>
   );

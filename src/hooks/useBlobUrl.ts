@@ -1,10 +1,35 @@
 import { useState, useEffect, type RefObject } from 'react';
 import { getBlobUrl } from '../services/fileSystemService';
 
+// Shared singleton IntersectionObserver — one observer for all PhotoCards
+const callbacks = new Map<Element, () => void>();
+let sharedObserver: IntersectionObserver | null = null;
+
+function getSharedObserver(): IntersectionObserver {
+  if (!sharedObserver) {
+    sharedObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const cb = callbacks.get(entry.target);
+            if (cb) {
+              cb();
+              callbacks.delete(entry.target);
+              sharedObserver!.unobserve(entry.target);
+            }
+          }
+        }
+      },
+      { rootMargin: '300px' },
+    );
+  }
+  return sharedObserver;
+}
+
 /**
  * Hook to load and manage a blob URL for a photo.
  * When an elementRef is provided, loading is deferred until the element
- * is near the viewport (IntersectionObserver with 300px rootMargin).
+ * is near the viewport (shared IntersectionObserver with 300px rootMargin).
  */
 export function useBlobUrl(
   photoId: string,
@@ -15,7 +40,7 @@ export function useBlobUrl(
   const [error, setError] = useState(false);
   const [visible, setVisible] = useState(!elementRef);
 
-  // Observe visibility when an element ref is provided
+  // Observe visibility via shared observer
   useEffect(() => {
     if (!elementRef) {
       setVisible(true);
@@ -28,18 +53,14 @@ export function useBlobUrl(
       return;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '300px' },
-    );
-
+    const observer = getSharedObserver();
+    callbacks.set(el, () => setVisible(true));
     observer.observe(el);
-    return () => observer.disconnect();
+
+    return () => {
+      callbacks.delete(el);
+      observer.unobserve(el);
+    };
   }, [elementRef]);
 
   // Load blob URL once visible
