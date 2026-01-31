@@ -28,36 +28,21 @@ function getSharedObserver(): IntersectionObserver {
 
 /**
  * Hook to load and manage a blob URL for a photo.
- * Checks cache synchronously on mount — if already cached (e.g. from scan),
- * returns instantly with no loading state.
- * When an elementRef is provided and not cached, loading is deferred until
- * the element is near the viewport (shared IntersectionObserver).
+ * If blob URL is already cached (from scan), hooks are no-ops.
  */
 export function useBlobUrl(
   photoId: string,
   elementRef?: RefObject<HTMLElement | null>,
 ): { url: string | null; loading: boolean; error: boolean } {
-  // Synchronous cache check — skip loading entirely if blob URL exists
   const cached = getCachedBlobUrl(photoId);
   const [url, setUrl] = useState<string | null>(cached);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState(false);
   const [visible, setVisible] = useState(!elementRef || !!cached);
 
-  // If already cached, nothing else to do
-  if (cached && url !== cached) {
-    // Handle case where photoId changed and cache has a new value
-    setUrl(cached);
-    setLoading(false);
-  }
-
-  // Observe visibility via shared observer (only when not cached)
+  // Observe visibility via shared observer (skip if cached)
   useEffect(() => {
-    if (cached) return; // Already loaded synchronously
-    if (!elementRef) {
-      setVisible(true);
-      return;
-    }
+    if (cached || !elementRef) return;
 
     const el = elementRef.current;
     if (!el) {
@@ -75,10 +60,9 @@ export function useBlobUrl(
     };
   }, [elementRef, cached]);
 
-  // Load blob URL once visible (only when not cached)
+  // Load blob URL once visible (skip if cached)
   useEffect(() => {
-    if (cached) return; // Already loaded synchronously
-    if (!visible) return;
+    if (cached || !visible) return;
 
     let cancelled = false;
 
@@ -103,6 +87,11 @@ export function useBlobUrl(
       cancelled = true;
     };
   }, [photoId, visible, cached]);
+
+  // Fast path: return cached value directly
+  if (cached) {
+    return { url: cached, loading: false, error: false };
+  }
 
   return { url, loading, error };
 }
