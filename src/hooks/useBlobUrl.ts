@@ -1,5 +1,5 @@
 import { useState, useEffect, type RefObject } from 'react';
-import { getBlobUrl } from '../services/fileSystemService';
+import { getBlobUrl, getCachedBlobUrl } from '../services/fileSystemService';
 
 // Shared singleton IntersectionObserver — one observer for all PhotoCards
 const callbacks = new Map<Element, () => void>();
@@ -28,20 +28,32 @@ function getSharedObserver(): IntersectionObserver {
 
 /**
  * Hook to load and manage a blob URL for a photo.
- * When an elementRef is provided, loading is deferred until the element
- * is near the viewport (shared IntersectionObserver with 300px rootMargin).
+ * Checks cache synchronously on mount — if already cached (e.g. from scan),
+ * returns instantly with no loading state.
+ * When an elementRef is provided and not cached, loading is deferred until
+ * the element is near the viewport (shared IntersectionObserver).
  */
 export function useBlobUrl(
   photoId: string,
   elementRef?: RefObject<HTMLElement | null>,
 ): { url: string | null; loading: boolean; error: boolean } {
-  const [url, setUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Synchronous cache check — skip loading entirely if blob URL exists
+  const cached = getCachedBlobUrl(photoId);
+  const [url, setUrl] = useState<string | null>(cached);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState(false);
-  const [visible, setVisible] = useState(!elementRef);
+  const [visible, setVisible] = useState(!elementRef || !!cached);
 
-  // Observe visibility via shared observer
+  // If already cached, nothing else to do
+  if (cached && url !== cached) {
+    // Handle case where photoId changed and cache has a new value
+    setUrl(cached);
+    setLoading(false);
+  }
+
+  // Observe visibility via shared observer (only when not cached)
   useEffect(() => {
+    if (cached) return; // Already loaded synchronously
     if (!elementRef) {
       setVisible(true);
       return;
@@ -61,10 +73,11 @@ export function useBlobUrl(
       callbacks.delete(el);
       observer.unobserve(el);
     };
-  }, [elementRef]);
+  }, [elementRef, cached]);
 
-  // Load blob URL once visible
+  // Load blob URL once visible (only when not cached)
   useEffect(() => {
+    if (cached) return; // Already loaded synchronously
     if (!visible) return;
 
     let cancelled = false;
@@ -89,7 +102,7 @@ export function useBlobUrl(
     return () => {
       cancelled = true;
     };
-  }, [photoId, visible]);
+  }, [photoId, visible, cached]);
 
   return { url, loading, error };
 }

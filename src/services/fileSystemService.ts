@@ -83,7 +83,7 @@ export async function scanDirectory(
           relativePath,
         });
 
-        // Try to get image dimensions
+        // Try to get image dimensions + create blob URL while we have the File
         let width = 0;
         let height = 0;
         try {
@@ -93,6 +93,11 @@ export async function scanDirectory(
           bitmap.close();
         } catch {
           // Can't decode (e.g. RAW files) — dimensions stay 0
+        }
+
+        // Cache blob URL now — avoids a second getFile() later
+        if (!blobUrlRegistry.has(id)) {
+          blobUrlRegistry.set(id, URL.createObjectURL(file));
         }
 
         photos.push({
@@ -132,6 +137,11 @@ export function createBlobUrl(photoId: string, file: File): string {
   return url;
 }
 
+/** Synchronous cache check — returns cached blob URL or null */
+export function getCachedBlobUrl(photoId: string): string | null {
+  return blobUrlRegistry.get(photoId) ?? null;
+}
+
 export async function getBlobUrl(photoId: string): Promise<string> {
   const existing = blobUrlRegistry.get(photoId);
   if (existing) return existing;
@@ -143,6 +153,25 @@ export async function getBlobUrl(photoId: string): Promise<string> {
   const url = URL.createObjectURL(file);
   blobUrlRegistry.set(photoId, url);
   return url;
+}
+
+/** Preload blob URLs for a batch of photo IDs (parallel with concurrency limit) */
+export async function preloadBlobUrls(photoIds: string[], concurrency = 6): Promise<void> {
+  const toLoad = photoIds.filter((id) => !blobUrlRegistry.has(id) && fileRegistry.has(id));
+  if (toLoad.length === 0) return;
+
+  let i = 0;
+  async function next(): Promise<void> {
+    while (i < toLoad.length) {
+      const id = toLoad[i++];
+      try {
+        await getBlobUrl(id);
+      } catch { /* skip errors */ }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, toLoad.length) }, () => next());
+  await Promise.all(workers);
 }
 
 export function revokeBlobUrl(photoId: string): void {
