@@ -1,6 +1,6 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
-import { PhotoCard } from '../photos/PhotoCard';
+import { LazyPhotoCard } from '../photos/LazyPhotoCard';
 import { PhotoViewer } from '../common/PhotoViewer';
 import type { Photo } from '../../types';
 
@@ -112,13 +112,17 @@ export function TimelineView() {
       .flatMap((g) => g.photos.map((p) => p.id));
   }, [visibleGroups, expandedDays]);
 
+  // Ref-stabilize so callback never changes
+  const allVisibleIdsRef = useRef(allVisibleIds);
+  allVisibleIdsRef.current = allVisibleIds;
+
   const handleToggleSelect = useCallback((id: string, shiftKey: boolean) => {
     if (shiftKey) {
-      shiftSelect(id, allVisibleIds);
+      shiftSelect(id, allVisibleIdsRef.current);
     } else {
       toggleSelect(id);
     }
-  }, [shiftSelect, toggleSelect, allVisibleIds]);
+  }, [shiftSelect, toggleSelect]);
 
   const handleSelectDay = useCallback((dayPhotos: Photo[]) => {
     const dayIds = dayPhotos.map((p) => p.id);
@@ -251,7 +255,7 @@ export function TimelineView() {
             {isExpanded && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {group.photos.map((photo) => (
-                  <PhotoCard
+                  <LazyPhotoCard
                     key={photo.id}
                     photo={photo}
                     selected={selectedSet.has(photo.id)}

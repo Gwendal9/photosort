@@ -1,6 +1,6 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { usePhotoStore } from '../../stores/photoStore';
-import { PhotoCard } from '../photos/PhotoCard';
+import { LazyPhotoCard } from '../photos/LazyPhotoCard';
 import { PhotoViewer } from '../common/PhotoViewer';
 
 type QualityCategory = 'all' | 'poor' | 'average' | 'good';
@@ -18,8 +18,6 @@ const TYPE_LABELS: Record<TypeCategory, string> = {
   photo: 'Photos',
   document: 'Documents',
 };
-
-const PAGE_SIZE = 20;
 
 function categorize(score: number | undefined): 'poor' | 'average' | 'good' {
   if (score === undefined) return 'average';
@@ -40,7 +38,6 @@ export function QualityView() {
   const toggleSelect = usePhotoStore((s) => s.toggleSelect);
   const shiftSelect = usePhotoStore((s) => s.shiftSelect);
 
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [viewingPhotoId, setViewingPhotoId] = useState<string | null>(null);
 
   const batchMode = selectedIds.length > 0;
@@ -80,15 +77,18 @@ export function QualityView() {
     return [...list].sort((a, b) => (a.qualityScore ?? 50) - (b.qualityScore ?? 50));
   }, [photosWithQuality, qualityFilter, typeFilter]);
 
-  // Reset pagination when filters change
+  const filteredIds = useMemo(() => filtered.map((p) => p.id), [filtered]);
+
+  // Ref-stabilize filteredIds so handleToggleSelect callback never changes
+  const filteredIdsRef = useRef(filteredIds);
+  filteredIdsRef.current = filteredIds;
+
   const handleQualityFilter = useCallback((f: QualityCategory) => {
     setQualityFilter(f);
-    setVisibleCount(PAGE_SIZE);
   }, [setQualityFilter]);
 
   const handleTypeFilter = useCallback((f: TypeCategory) => {
     setTypeFilter(f);
-    setVisibleCount(PAGE_SIZE);
   }, [setTypeFilter]);
 
   const handleTrashPoor = () => {
@@ -109,17 +109,14 @@ export function QualityView() {
     showToast(`${targets.length} document${targets.length > 1 ? 's' : ''} mis en corbeille`, 'success');
   };
 
-  const visiblePhotos = filtered.slice(0, visibleCount);
-  const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
-  const hasMore = visibleCount < filtered.length;
-
+  // Stable callback — never changes reference, uses ref for latest IDs
   const handleToggleSelect = useCallback((id: string, shiftKey: boolean) => {
     if (shiftKey) {
-      shiftSelect(id, visibleIds);
+      shiftSelect(id, filteredIdsRef.current);
     } else {
       toggleSelect(id);
     }
-  }, [shiftSelect, toggleSelect, visibleIds]);
+  }, [shiftSelect, toggleSelect]);
 
   if (photosWithQuality.length === 0) {
     return (
@@ -137,7 +134,7 @@ export function QualityView() {
 
   return (
     <div className="space-y-6">
-      {/* Stats summary — no backdrop-blur for scroll performance */}
+      {/* Stats summary */}
       <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
         <div className="bg-white/8 border border-white/15 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-green-400">{stats.good}</p>
@@ -216,10 +213,10 @@ export function QualityView() {
         </div>
       </div>
 
-      {/* Photo grid — paginated */}
+      {/* Photo grid — virtualized: only mounts PhotoCards near viewport */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {visiblePhotos.map((photo) => (
-          <PhotoCard
+        {filtered.map((photo) => (
+          <LazyPhotoCard
             key={photo.id}
             photo={photo}
             selected={selectedSet.has(photo.id)}
@@ -229,17 +226,6 @@ export function QualityView() {
           />
         ))}
       </div>
-
-      {hasMore && (
-        <div className="text-center">
-          <button
-            onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-            className="px-6 py-2 bg-white/10 text-white/80 rounded-lg hover:bg-white/15 transition-colors"
-          >
-            Voir plus ({filtered.length - visibleCount} restantes)
-          </button>
-        </div>
-      )}
 
       {filtered.length === 0 && (
         <p className="text-center text-white/50 py-8">
@@ -257,7 +243,7 @@ export function QualityView() {
         return (
           <PhotoViewer
             photo={viewingPhoto}
-            photoIds={visibleIds}
+            photoIds={filteredIds}
             onClose={() => setViewingPhotoId(null)}
             onNavigate={setViewingPhotoId}
           />
