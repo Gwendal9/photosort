@@ -30,8 +30,11 @@ function categorize(score: number | undefined): 'poor' | 'average' | 'good' {
 }
 
 export function QualityView() {
-  const { photos, qualityFilter, setQualityFilter, typeFilter, setTypeFilter, addToTrash, showToast } = usePhotoStore();
+  const { photos, qualityFilter, setQualityFilter, typeFilter, setTypeFilter, addToTrash, showToast, selectedIds, toggleSelect, shiftSelect } = usePhotoStore();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const batchMode = selectedIds.length > 0;
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const photosWithQuality = useMemo(
     () => photos.filter((p) => p.qualityScore !== undefined),
@@ -99,7 +102,16 @@ export function QualityView() {
   };
 
   const visiblePhotos = filtered.slice(0, visibleCount);
+  const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
   const hasMore = visibleCount < filtered.length;
+
+  const handleToggleSelect = useCallback((id: string, shiftKey: boolean) => {
+    if (shiftKey) {
+      shiftSelect(id, visibleIds);
+    } else {
+      toggleSelect(id);
+    }
+  }, [shiftSelect, toggleSelect, visibleIds]);
 
   if (photosWithQuality.length === 0) {
     return (
@@ -211,7 +223,13 @@ export function QualityView() {
       {/* Photo grid — paginated */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {visiblePhotos.map((photo) => (
-          <PhotoCard key={photo.id} photo={photo} />
+          <PhotoCard
+            key={photo.id}
+            photo={photo}
+            selected={selectedSet.has(photo.id)}
+            onToggleSelect={handleToggleSelect}
+            batchMode={batchMode}
+          />
         ))}
       </div>
 
@@ -231,6 +249,9 @@ export function QualityView() {
           Aucune photo dans cette catégorie.
         </p>
       )}
+
+      {/* Bottom spacing for selection bar */}
+      {batchMode && <div className="h-16" />}
     </div>
   );
 }

@@ -3,12 +3,14 @@ import { FolderPicker } from './components/folders/FolderPicker';
 import { ComparisonView } from './components/comparison/ComparisonView';
 import { QualityView } from './components/quality/QualityView';
 import { TrashView } from './components/trash/TrashView';
+import { TimelineView } from './components/timeline/TimelineView';
 import { ProgressBar } from './components/common/ProgressBar';
 import { Toast } from './components/common/Toast';
+import { SelectionBar } from './components/common/SelectionBar';
 import { usePhotoStore } from './stores/photoStore';
 import { isFileSystemAccessSupported } from './services/fileSystemService';
 
-type View = 'home' | 'comparison' | 'quality' | 'trash';
+type View = 'home' | 'comparison' | 'quality' | 'timeline' | 'trash';
 
 const STATUS_LABELS: Record<string, string> = {
   scanning: 'Scan des dossiers...',
@@ -55,6 +57,12 @@ function App() {
                 Qualité
               </button>
               <button
+                onClick={() => setCurrentView('timeline')}
+                className={`px-3 py-2 rounded-md transition-colors ${currentView === 'timeline' ? 'bg-white/25 text-white' : 'text-white/70 hover:bg-white/10'}`}
+              >
+                Timeline
+              </button>
+              <button
                 onClick={() => setCurrentView('trash')}
                 className={`px-3 py-2 rounded-md transition-colors ${currentView === 'trash' ? 'bg-white/25 text-white' : 'text-white/70 hover:bg-white/10'}`}
               >
@@ -79,8 +87,12 @@ function App() {
         {currentView === 'home' && <FolderPicker />}
         {currentView === 'comparison' && <ComparisonView />}
         {currentView === 'quality' && <QualityView />}
+        {currentView === 'timeline' && <TimelineView />}
         {currentView === 'trash' && <TrashView />}
       </main>
+
+      {/* Selection bar */}
+      <SelectionBar />
 
       {/* Toast notifications */}
       <div className="fixed bottom-4 right-4 space-y-2 z-50">

@@ -7,12 +7,17 @@ interface PhotoCardProps {
   photo: Photo;
   selectable?: boolean;
   onSelect?: (id: string) => void;
+  selected?: boolean;
+  onToggleSelect?: (id: string, shiftKey: boolean) => void;
+  batchMode?: boolean;
 }
 
-export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProps) {
+export function PhotoCard({ photo, selectable = false, onSelect, selected, onToggleSelect, batchMode }: PhotoCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const { addToTrash } = usePhotoStore();
   const { url: imageSrc, loading, error: imageError } = useBlobUrl(photo.id);
+
+  const showCheckbox = batchMode || selected;
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} o`;
@@ -24,9 +29,16 @@ export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProp
     addToTrash(photo);
   };
 
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleSelect?.(photo.id, e.shiftKey);
+  };
+
   return (
     <div
-      className="relative group rounded-lg overflow-hidden bg-white/5 aspect-square"
+      className={`relative group rounded-lg overflow-hidden bg-white/5 aspect-square ${
+        selected ? 'ring-2 ring-blue-400' : ''
+      }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -53,10 +65,28 @@ export function PhotoCard({ photo, selectable = false, onSelect }: PhotoCardProp
         </div>
       ) : null}
 
-      {/* Quality badge */}
+      {/* Batch selection checkbox */}
+      {onToggleSelect && (showCheckbox || isHovered) && (
+        <button
+          onClick={handleCheckboxClick}
+          className={`absolute top-1 left-1 z-20 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+            selected
+              ? 'bg-blue-500 border-blue-400'
+              : 'bg-black/40 border-white/50 hover:border-white/80'
+          }`}
+        >
+          {selected && (
+            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
+      )}
+
+      {/* Quality badge — shifted right when checkbox is visible */}
       {photo.qualityScore !== undefined && (
         <div
-          className={`absolute top-1 left-1 z-10 px-1.5 py-0.5 rounded text-xs font-semibold backdrop-blur ${
+          className={`absolute ${onToggleSelect ? 'top-1 left-7' : 'top-1 left-1'} z-10 px-1.5 py-0.5 rounded text-xs font-semibold backdrop-blur ${
             photo.qualityScore >= 70
               ? 'bg-green-500/80 text-white'
               : photo.qualityScore >= 40
